@@ -22,7 +22,7 @@ def get_annotations(path):
 
 def main():
     #path = 'clever_output_test.parquet'
-    path = 'prototype_5k_notes2.hdf'
+    path = 'data/prototype_5k_notes2.hdf'
 
     df = get_annotations(path)
     #df["note_date"] = pd.to_datetime(df["note_date"])
