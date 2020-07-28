@@ -7,12 +7,12 @@ import sys
 from json import JSONDecoder, JSONEncoder
 from typing import Any, Dict, List, Set, Tuple
 
-import neuralcoref
-import spacy
-from spacy.lang.en import English
+#import neuralcoref
+#import spacy
+#from spacy.lang.en import English
 
-sys.path.insert(1, '../eventExtraction')
-from utilities import flatten
+#sys.path.insert(1, '../eventExtraction')
+#from utilities import flatten
 
 ETYPE_PATIENT = "Patient"
 ETYPE_VISIT = "Visit"
