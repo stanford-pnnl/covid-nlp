@@ -98,11 +98,10 @@ def get_diagnosis_events(events, event_cnt, df):
         date = row.date
         try:
             if 'Anxiety disorders and symptoms' in HLGT_text:
-                #print("Found anxiety disorder")
-                diagnosis_event = Event(chartdate=date, provenance=date)
-                diagnosis_event.diagnosis_role(diagnosis_icd9='', diagnosis_name='Anxiety disorder and symptoms')
                 event_cnt['id'] += 1
                 event_cnt['diagnosis'] += 1
+                diagnosis_event = Event(chartdate=date, provenance=date, event_id=event_cnt['id'])
+                diagnosis_event.diagnosis_role(diagnosis_icd9='', diagnosis_name='Anxiety disorder and symptoms')
                 events[str(event_cnt['id'])] = diagnosis_event
         except TypeError:
             pass
@@ -114,8 +113,78 @@ def get_events(df):
     get_diagnosis_events(events, event_cnt, df)
     print(f"Found {event_cnt['id']} total events")
     print(f"Found {event_cnt['diagnosis']} diagnosis events")
-
     return events
+
+
+def get_patient_visits(df):
+    patient_visits = {}
+    for row in df.itertuples():
+        patient_id = row.patid
+        visit_id = row.date  #FIXME, currently using date as visit ID
+        if not visit_id:
+            continue  # skip if missing ID
+        if not patient_visits.get(patient_id, None):
+            patient_visits[patient_id] = set()
+        patient_visits[patient_id].add(visit_id)
+    return patient_visits
+
+
+def create_visits(patient_visits: Dict[str, set]) -> Dict[str, Visit]:
+    """Create visit objects."""
+    visits: Dict[str, Visit] = {}
+    for patient_id, visit_set in patient_visits.items():
+        for hadm_id in visit_set:
+            visits[hadm_id] = Visit(hadm_id=hadm_id, provenance=patient_id)
+    return visits
+
+
+def attach_events_to_visits(events: Dict[str, Event],
+                            visits: Dict[str, Visit]):
+    num_missing_keys = 0
+    num_successful_keys = 0
+
+    # Attach events to visits
+    for event in events.values():
+        try:
+            visits[event.provenance].events.append(event)
+            num_successful_keys += 1
+        except KeyError:
+            num_missing_keys += 1
+    print(f"Events, Num missing keys: {num_missing_keys}\n"
+          f"Events, Num successful keys: {num_successful_keys}")
+
+
+def attach_visits_to_patients(visits: Dict[str, Visit],
+                              patients: Dict[str, Patient]):
+    num_missing_keys = 0
+    num_successful_keys = 0
+    # Attach visits to Patients
+    for visit in visits.values():
+        try:
+            patients[visit.provenance].visits.append(visit)
+            num_successful_keys += 1
+        except KeyError:
+            num_missing_keys += 1
+    print(f"Vists, Num missing keys: {num_missing_keys}\n"
+          f"Visits, Num successful keys: {num_successful_keys}")
+
+
+def select_non_empty_patients(patient_ids: Set[str],
+                              visits: Dict[str, Visit]) -> Set[str]:
+    """Filter out patients IDs with no visits."""
+    print(f"Before filtering out empty patients: {len(patient_ids)} patient IDs")
+
+    non_empty_patient_ids = set()
+    for visit in visits.values():
+        patient_id = visit.provenance
+        non_empty_patient_ids.add(patient_id)
+
+    if not non_empty_patient_ids.issubset(patient_ids):
+        print("Non-empty patient IDs are not a subset of patient IDs")
+
+    print(f"After filtering out empty patients: {len(non_empty_patient_ids)} patient IDs")
+
+    return non_empty_patient_ids
 
 
 def main():
@@ -148,50 +217,26 @@ def main():
         sys.exit(0)
     print(f"Found {len(events.values())} events values")
 
+    # Get patient visits
+    patient_visits = get_patient_visits(meddra_extractions)
 
-    import pdb;pdb.set_trace()
+    # Create visit objects
+    visits = create_visits(patient_visits)
 
+    # Attach events to visits
+    attach_events_to_visits(events, visits)
+
+    # Filter out patient IDs that don't have any visits
+    patient_ids = select_non_empty_patients(patient_ids, visits)
 
     # Generate patients from IDs
     patients = generate_patients_from_ids(patient_ids)
 
+    # Attach visits to patients
+    attach_visits_to_patients(visits, patients)
+
     # Sort patient keys
     sorted_patient_keys = sorted(patients.keys(), key=int)
-
-       # Add  visits to patients
-    # Get all the note ids and then build visits based on that
-    for row in meddra_extractions.itertuples():
-        patient = patients[row.patid]
-        extraction_date = row.date
-        visit_found = False
-        visit = None
-        # Check if patient has visit with date
-        for patient_visit in patient.visits:
-            patient_visit_date = patient_visit.hadm_id
-            if extraction_date == patient_visit_date:
-                visit_found = True
-                break
-
-        # Create visit if not found
-        if not visit_found:
-            visit = Visit(hadm_id=extraction_date)
-            patient.visits.append(visit)
-
-    num_patients = len(patients)
-    sum_visits = 0
-    min_visits = 9999
-    max_visits = 0
-    for patient in patients.values():
-        num_visits = len(patient.visits)
-        sum_visits += num_visits
-        if min_visits > num_visits:
-            min_visits = num_visits
-        if max_visits < num_visits:
-            max_visits = num_visits
-
-    avg_visits = sum_visits / float(num_patients)
-    print(f"Average visits per patient: {avg_visits}, max visits per patient: {max_visits}, min visits per patient: {min_visits}")
-
 
     # Dump patients
     export_patients(patients_dump_path, patients, sorted_patient_keys)
