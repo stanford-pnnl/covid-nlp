@@ -91,20 +91,27 @@ def get_distinct_column_values(df, output_dir, keys):
 
 
 def get_diagnosis_events(events, event_cnt, df):
-
+    PT_text_collection = Counter()
     for row in df.itertuples():
         # anxiety
         HLGT_text = row.HLGT_text
+        PT_text = row.PT_text
         date = row.date
         try:
             if 'Anxiety disorders and symptoms' in HLGT_text:
                 event_cnt['id'] += 1
                 event_cnt['diagnosis'] += 1
+                PT_text_collection[PT_text] += 1
                 diagnosis_event = Event(chartdate=date, provenance=date, event_id=event_cnt['id'])
-                diagnosis_event.diagnosis_role(diagnosis_icd9='', diagnosis_name='Anxiety disorder and symptoms')
+                diagnosis_event.diagnosis_role(diagnosis_icd9=PT_text, diagnosis_name='Anxiety disorder and symptoms')
                 events[str(event_cnt['id'])] = diagnosis_event
         except TypeError:
             pass
+    #PT_text_collection.sort()
+    print(f"{PT_text_collection}")
+    sorted_keys = PT_text_collection.keys()
+    for k in sorted_keys:
+        print(f"k{k}, count{PT_text_collection[k]}")
 
 def get_events(df):
     event_cnt = Counter()
