@@ -106,8 +106,31 @@ def get_distinct_column_values(df, output_dir, keys):
 
 
 def get_diagnosis_events_depression(events, event_cnt, date, concept_text, PT_text):
-    concept_text_depression = ['Anxious depression', 'Bipolar depression', 'Chronic depression', 'Major depression', 'Post stroke depression', 'Postpartum depression', 'Reactive depression', 'ST segment depression', 'bipolar depression', 'chronic depression', 'depression', 'depression nos', 'major depression', 'manic depression', 'mood depression', 'post stroke depression', 'postpartum depression', 'reactive depression', 'suicidal depression']
-    PT_text_depression = ['Major depression', 'Perinatal depression', 'Post stroke depression']
+    concept_text_depression = [
+            'Anxious depression',
+            'Bipolar depression',
+            'Chronic depression',
+            'Major depression',
+            'Post stroke depression',
+            'Postpartum depression',
+            'Reactive depression',
+            'ST segment depression',
+            'bipolar depression',
+            'chronic depression',
+            'depression',
+            'depression nos',
+            'major depression',
+            'manic depression',
+            'mood depression',
+            'post stroke depression',
+            'postpartum depression',
+            'reactive depression', 
+            'suicidal depression']
+
+    PT_text_depression = [
+            'Major depression',
+            'Perinatal depression',
+            'Post stroke depression']
 
     # Check for 'depression'
     depression_diagnosis_event_found = False
@@ -173,6 +196,52 @@ def get_diagnosis_events_anxiety(events, event_cnt, date, concept_text, PT_text)
         events[str(event_cnt['id'])] = anxiety_diagnosis_event
  
 
+def get_diagnosis_events_insomnia(events, event_cnt, date, concept_text, PT_text):
+    concept_text_insomnia = []
+    PT_text_insomnia = []
+
+    # Check for insomnia
+    insomnia_diagnosis_event_found = False
+    if concept_text in concept_text_insomnia:
+        insomnia_diagnosis_event_found = True
+    if PT_text in PT_text_insomnia:
+        insomnia_diagnosis_event_found = True
+
+    # If we find an insomnia diagnosis event, create it 
+    if insomnia_diagnosis_event_found:
+        event_cnt['id'] += 1
+        event_cnt['diagnosis'] += 1
+        event_cnt['diagnosis_insomnia'] += 1
+        insomnia_diagnosis_event = Event(chartdate=date, provenance=date, event_id=event_cnt['id'])
+        insomnia_diagnosis_event.diagnosis_role(diagnosis_icd9='', diagnosis_name='Insomnia')
+        insomnia_diagnosis_event.roles['concept_text'] = concept_text
+        insomnia_diagnosis_event.roles['PT_text'] = PT_text
+        events[str(event_cnt['id'])] = insomnia_diagnosis_event
+
+
+def get_diagnosis_events_distress(events, event_cnt, date, concept_text, PT_text):
+    concept_text_distress = []
+    PT_text_distress = []
+
+    # Check for distress
+    distress_diagnosis_event_found = False
+    if concept_text in concept_text_distress:
+        distress_diagnosis_event_found = True
+    if PT_text in PT_text_insomnia:
+        distress_diagnosis_event_found = True
+
+    # If we find a distress diagnosis event, create it 
+    if distress_diagnosis_event_found:
+        event_cnt['id'] += 1
+        event_cnt['diagnosis'] += 1
+        event_cnt['diagnosis_distress'] += 1
+        distress_diagnosis_event = Event(chartdate=date, provenance=date, event_id=event_cnt['id'])
+        distress_diagnosis_event.diagnosis_role(diagnosis_icd9='', diagnosis_name='Distress')
+        distress_diagnosis_event.roles['concept_text'] = concept_text
+        distress_diagnosis_event.roles['PT_text'] = PT_text
+        events[str(event_cnt['id'])] = distress_diagnosis_event
+
+
 def get_diagnosis_events(events, event_cnt, df):
     columns = dict()
     for column in df.columns.tolist():
@@ -195,8 +264,8 @@ def get_diagnosis_events(events, event_cnt, df):
         # Check for different types of diagnosis events
         get_diagnosis_events_depression(events, event_cnt, date, concept_text, PT_text)
         get_diagnosis_events_anxiety(events, event_cnt, date, concept_text, PT_text)
-        get_diagnosis_events_insomnia(events, event_cnt, concept_text, PT_text)
-        #get_diagnosis_events_distress(events, event_cnt, concept_text, PT_text)
+        get_diagnosis_events_insomnia(events, event_cnt, date, concept_text, PT_text)
+        get_diagnosis_events_distress(events, event_cnt, date, concept_text, PT_text)
 
     #print(f"columns: {columns}")
 
