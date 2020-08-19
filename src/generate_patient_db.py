@@ -234,8 +234,9 @@ def get_diagnosis_events_insomnia(events, event_cnt, date, concept_text, PT_text
 
 
 def get_diagnosis_events_distress(events, event_cnt, date, concept_text, PT_text):
-    concept_text_distress = []
-    PT_text_distress = []
+    concept_text_distress = ['Emotional distress', 'emotional distress']
+
+    PT_text_distress = ['Emotional distress']
 
     # Check for distress
     distress_diagnosis_event_found = False
