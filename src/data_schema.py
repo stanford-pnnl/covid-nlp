@@ -59,7 +59,7 @@ class EntityDecoder(JSONDecoder):
                     patient_age=obj['age'],
                     patient_dob=obj['dob'],
                     patient_gender=obj['gender'],
-                    patient_is_adult=obj['is_adult'],
+                    patient_adult=obj['adult'],
                     patient_smoker=obj['smoker'])
         p.visits.extend(obj['visits'])
         return p
@@ -119,7 +119,7 @@ class EntityEncoder(JSONEncoder):
             'age': obj.age,
             'dob': obj.dob,
             'gender': obj.gender,
-            'is_adult': obj.is_adult,
+            'adult': obj.adult,
             'smoker': obj.smoker,
             'visits': [self.default(v) for v in obj.visits]
         }
@@ -241,6 +241,16 @@ class Event(Entity):
             provenance_equal and roles_equal
         return event_equal
 
+    def __str__(self):
+        event_str = "Event {\n"
+        event_str += f"\tentity_id: {self.entity_id}\n"
+        event_str += f"\tchartdate: {self.chartdate}\n"
+        event_str += f"\tevent_type: {self.event_type}\n"
+        event_str += f"\tprovenance: {self.provenance}\n"
+        event_str += f"\troles: {self.roles}\n"
+        event_str += "}"
+        return event_str
+
 
 class Visit(Entity):
     """Visit class."""
@@ -272,14 +282,14 @@ class Patient(Entity):
 
     def __init__(self, patient_embedding=None, patient_id: str = "",
                  patient_age: Any = None, patient_dob: str = "",
-                 patient_gender: str = "", patient_is_adult: bool = False,
+                 patient_gender: str = "", patient_adult: bool = False,
                  patient_smoker: bool = False):
         """Initialize Patient."""
         Entity.__init__(self, patient_embedding, patient_id, ETYPE_PATIENT)
         self.age: Any = patient_age
         self.dob: str = patient_dob
         self.gender: str = patient_gender
-        self.is_adult: bool = patient_is_adult
+        self.adult: bool = patient_adult
         self.smoker: bool = patient_smoker
         # TODO, make sure visits are unique
         self.visits: List[Visit] = []
@@ -298,9 +308,9 @@ class Patient(Entity):
             self.gender = patient_attributes['gender']
             logging.debug("\tPatient gender updated")
 
-        if patient_attributes.get('is_adult'):
-            self.is_adult = patient_attributes['is_adult']
-            logging.debug("\tPatient is_adult updated")
+        if patient_attributes.get('adult'):
+            self.adult = patient_attributes['adult']
+            logging.debug("\tPatient adult updated")
 
         if patient_attributes.get('smoker'):
             self.smoker = patient_attributes['smoker']
@@ -318,10 +328,22 @@ class Patient(Entity):
         age_equal = self.age == other.age
         dob_equal = self.dob == other.dob
         gender_equal = self.gender == other.gender
-        is_adult_equal = self.is_adult == other.is_adult
+        adult_equal = self.adult == other.adult
         smoker_equal = self.smoker == other.smoker
         visits_equal = sorted(self.visits) == sorted(other.visits)
 
-        patient_equal = age_equal and is_adult_equal and dob_equal and \
+        patient_equal = age_equal and adult_equal and dob_equal and \
             gender_equal and smoker_equal and visits_equal
         return patient_equal
+
+    def __str__(self):
+        patient_str = "Patient {\n"
+        patient_str += f"\tentity_id: {self.entity_id}\n"
+        patient_str += f"\tage: {self.age}\n"
+        patient_str += f"\tdob: {self.dob}\n"
+        patient_str += f"\tgender: {self.gender}\n"
+        patient_str += f"\tadult: {self.adult}\n"
+        patient_str += f"\tsmoker: {self.smoker}\n"
+        patient_str += "}"
+        # TODO, print each visit
+        return patient_str

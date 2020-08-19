@@ -1,4 +1,5 @@
 import datetime
+import os
 import sys
 from collections import Counter
 from tqdm import tqdm
@@ -60,11 +61,25 @@ def export_patients(path: str, patients: Dict[str, Any],
     else:
         keys = sorted_keys
 
+    c = Counter()
+    c['num_keys'] = 0
+    c['successful_dumps'] = 0
+    c['failed_dumps'] = 0
+
     with open(path, 'w') as f:
         for key in keys:
+            c['num_keys'] += 1
             patient = patients[key]
-            patient_str = json.dumps(patient, cls=EntityEncoder)
-            f.write(f"{patient_str}\n")
+            try:
+                patient_str = json.dumps(patient, cls=EntityEncoder)
+                f.write(f"{patient_str}\n")
+                c['successful_dumps'] += 1
+            except TypeError as e:
+                c['failed_dumps'] += 1
+                print(f"e: {e}")
+                import pdb;pdb.set_trace()
+                #print(f"Failed to dump patient {key}")
+    print(f"{c}")
 
 
 def get_distinct_column_values(df, output_dir, keys):
@@ -90,28 +105,100 @@ def get_distinct_column_values(df, output_dir, keys):
                 f.write(f"{distinct_column_value}\n")
 
 
+def get_diagnosis_events_depression(events, event_cnt, date, concept_text, PT_text):
+    concept_text_depression = ['Anxious depression', 'Bipolar depression', 'Chronic depression', 'Major depression', 'Post stroke depression', 'Postpartum depression', 'Reactive depression', 'ST segment depression', 'bipolar depression', 'chronic depression', 'depression', 'depression nos', 'major depression', 'manic depression', 'mood depression', 'post stroke depression', 'postpartum depression', 'reactive depression', 'suicidal depression']
+    PT_text_depression = ['Major depression', 'Perinatal depression', 'Post stroke depression']
+
+    # Check for 'depression'
+    depression_diagnosis_event_found = False
+    if concept_text in concept_text_depression:
+        depression_diagnosis_event_found = True
+    if PT_text in PT_text_depression:
+        depression_diagnosis_event_found = True
+    
+    # If we find a depression diagnosis event, create it
+    if depression_diagnosis_event_found:
+        event_cnt['id'] += 1
+        event_cnt['diagnosis'] += 1
+        event_cnt['diagnosis_depression'] += 1
+        depression_diagnosis_event = Event(chartdate=date, provenance=date, event_id=event_cnt['id'])
+        depression_diagnosis_event.diagnosis_role(diagnosis_icd9='', diagnosis_name='Depression')
+        depression_diagnosis_event.roles['concept_text'] = concept_text
+        depression_diagnosis_event.roles['PT_text'] = PT_text
+        events[str(event_cnt['id'])] = depression_diagnosis_event
+
+
+def get_diagnosis_events_anxiety(events, event_cnt, date, concept_text, PT_text):
+    concept_text_anxiety = [
+            'Adjustment disorder with anxiety',
+            'Chronic anxiety',
+            'Generalized anxiety disorder',
+            'Situational anxiety',
+            'Social anxiety disorder',
+            'adjustment disorder with anxiety',
+            'anxiety',
+            'anxiety attack',
+            'anxiety disorder',
+            'anxiety symptoms',
+            'chronic anxiety',
+            'generalized anxiety disorder',
+            'separation anxiety',
+            'situational anxiety',
+            'social anxiety disorder']
+
+    PT_text_anxiety = [
+            'Adjustment disorder with anxiety',
+            'Generalised anxiety disorder',
+            'Illness anxiety disorder',
+            'Separation anxiety disorder',
+            'Social anxiety disorder']
+
+    # Check for anxiety
+    anxiety_diagnosis_event_found = False
+    if concept_text in concept_text_anxiety:
+        anxiety_diagnosis_event_found = True
+    if PT_text in PT_text_anxiety:
+        anxiety_diagnosis_event_found = True
+
+
+    # If we find an anxiety diagnosis event, create it
+    if anxiety_diagnosis_event_found:
+        event_cnt['id'] += 1
+        event_cnt['diagnosis'] += 1
+        event_cnt['diagnosis_anxiety'] += 1
+        anxiety_diagnosis_event = Event(chartdate=date, provenance=date, event_id=event_cnt['id'])
+        anxiety_diagnosis_event.diagnosis_role(diagnosis_icd9='', diagnosis_name='Anxiety')
+        anxiety_diagnosis_event.roles['concept_text'] = concept_text
+        anxiety_diagnosis_event.roles['PT_text'] = PT_text
+        events[str(event_cnt['id'])] = anxiety_diagnosis_event
+ 
+
 def get_diagnosis_events(events, event_cnt, df):
-    PT_text_collection = Counter()
+    columns = dict()
+    for column in df.columns.tolist():
+        columns[column] = Counter()
+    print(df.head())
+
     for row in df.itertuples():
-        # anxiety
+        #import pdb;pdb.set_trace()
+        date = row.date
+
         HLGT_text = row.HLGT_text
         PT_text = row.PT_text
-        date = row.date
-        try:
-            if 'Anxiety disorders and symptoms' in HLGT_text:
-                event_cnt['id'] += 1
-                event_cnt['diagnosis'] += 1
-                PT_text_collection[PT_text] += 1
-                diagnosis_event = Event(chartdate=date, provenance=date, event_id=event_cnt['id'])
-                diagnosis_event.diagnosis_role(diagnosis_icd9=PT_text, diagnosis_name='Anxiety disorder and symptoms')
-                events[str(event_cnt['id'])] = diagnosis_event
-        except TypeError:
-            pass
-    #PT_text_collection.sort()
-    print(f"{PT_text_collection}")
-    sorted_keys = PT_text_collection.keys()
-    for k in sorted_keys:
-        print(f"k{k}, count{PT_text_collection[k]}")
+        concept_text = row.concept_text
+   
+        columns['HLGT_text'][HLGT_text] += 1
+        columns['PT_text'][PT_text] += 1
+        columns['concept_text'][concept_text] += 1
+        
+
+        # Check for different types of diagnosis events
+        get_diagnosis_events_depression(events, event_cnt, date, concept_text, PT_text)
+        get_diagnosis_events_anxiety(events, event_cnt, date, concept_text, PT_text)
+        get_diagnosis_events_insomnia(events, event_cnt, concept_text, PT_text)
+        #get_diagnosis_events_distress(events, event_cnt, concept_text, PT_text)
+
+    #print(f"columns: {columns}")
 
 def get_events(df):
     event_cnt = Counter()
@@ -198,10 +285,15 @@ def main():
     # Setup variables
     output_dir = 'output'
     distinct_column_values_dir = f"{output_dir}/distinct_column_values"
-    data_dir = 'data'
-    meddra_extractions_dir = f"{data_dir}/medDRA_extractions"
-    meddra_extractions_path = f"{meddra_extractions_dir}/meddra_hier_batch3.hdf"
-     # Generate patient dump path
+    #data_dir = 'data'
+    #meddra_extractions_dir = f"{data_dir}/medDRA_extractions"
+    covid_data_dir = f"/share/pi/stamang/covid/data"
+    notes_2019_2020_dir = f"{covid_data_dir}/notes_20190901_20200701/extracted_notes"
+    notes_2018_2019_dir = f"{covid_data_dir}/notes_20180901_20190701/extracted_notes"
+    # Currently just testing one file, should eventually iterate through all extracted files
+    #meddra_extractions_path = f"{meddra_extractions_dir}/meddra_hier_batch3.hdf"
+    meddra_extractions_path = f"{notes_2018_2019_dir}/extracted_notes_batch391.parquet"
+    # Generate patient dump path
     patients_dump_path = generate_path_with_time(path='output/patients', extension='jsonl')
 
 
@@ -213,6 +305,12 @@ def main():
     column_keys = \
             ['note_title', 'concept_text', 'polarity', 'present', 
              'PT_text', 'HLT_text', 'HLGT_text', 'SOC_text']
+    # Make sure output directories are created
+    try:
+        os.makedirs(distinct_column_values_dir)
+    except OSError:
+        pass
+
     get_distinct_column_values(meddra_extractions, distinct_column_values_dir, columns)
 
     # Get distinct Patient ID values from dataframe
@@ -245,11 +343,10 @@ def main():
     # Sort patient keys
     sorted_patient_keys = sorted(patients.keys(), key=int)
 
+    #import pdb;pdb.set_trace()    
+
     # Dump patients
     export_patients(patients_dump_path, patients, sorted_patient_keys)
-
-    import pdb;pdb.set_trace()
-    print()
 
 
 if __name__ == '__main__':
