@@ -197,8 +197,22 @@ def get_diagnosis_events_anxiety(events, event_cnt, date, concept_text, PT_text)
  
 
 def get_diagnosis_events_insomnia(events, event_cnt, date, concept_text, PT_text):
-    concept_text_insomnia = []
-    PT_text_insomnia = []
+    concept_text_insomnia = [
+            'Behavorial insomnia of childhood'
+            'Chronic insomnia',
+            'Initial insomnia',
+            'Primary insomnia',
+            'chronic insomnia',
+            'insomnia', 
+            'primary insomnia',
+            'psychological insomnia']
+
+    PT_text_insomnia = [
+            'Behavioural insomnia of childhood',
+            'Initial insomnia',
+            'Middle insomnia',
+            'Psychophysiologi insomnia',
+            'Terminal insomnia']
 
     # Check for insomnia
     insomnia_diagnosis_event_found = False
