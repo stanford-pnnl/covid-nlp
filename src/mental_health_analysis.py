@@ -5,28 +5,32 @@ from patient_db import PatientDB
 
 
 def mental_health_co_morbidities(patients, terms):
-    patient_key_matches = set()
+    print("Running mental health co-morbidities checks...")
+    patients_matched = PatientDB()
     for term in terms:
-        term_patient_key_matches = pat_db.get_patients(entity_class='Event', entity_attribute='diagnosis')
-        patient_key_matches.union(term_patient_key_matches)
+        print(f"Matching for term: {term}")
+        term_patients_matched = patients.match_term(term, event_types=['DiagnosisEvent'])
+        patients_matched.merge_patients(term_patients_matched)
 
+    print(f"{len(patients_matched.patients)} patients matched")
+    import pdb;pdb.set_trace()
     # Lookup information from visits where these codes were reported and collect other diagnossis code
 
     # Aggregate counts for each such diagnosis code either based on the number of visits or number of patients
 
 
 def main():
-    patients_output_dir = "/home/colbyham/covid-nlp/output"
-    patients_db_path = f"{patient_output_dir}/patients_20200821-031648.jsonl"
+    data_dir = "/home/colbyham/covid-nlp/output"
+    patients_db_path = f"{data_dir}/patients_20200821-031648.jsonl"
 
     # Create and load an instance of PatientDB
     patients = PatientDB(name='all')
     patients.load(patients_db_path)
     import pdb;pdb.set_trace()
 
-    # Q1
-    #question_one_terms = ['depression', 'anxiety', 'insomnia', 'distress']
-    #answer_one = mental_health_co_morbidities(patients, question_one_terms)
+    print("Question 1:")
+    question_one_terms = ['depression', 'anxiety', 'insomnia', 'distress']
+    answer_one = mental_health_co_morbidities(patients, question_one_terms)
 
     # Q2
     #question_two_terms = question_one_terms
