@@ -276,6 +276,16 @@ class Visit(Entity):
         visit_equal = hadm_id_equal and provenance_equal and events_equal
         return visit_equal
 
+    def __str__(self):
+        visit_str = "Visit {\n"
+        visit_str += f"\tentity_id: {self.entity_id}\n"
+        visit_str += f"\thadm_id: {self.hadm_id}\n"
+        visit_str += f"\tprovenance: {self.provenance}\n"
+        for event in self.events:
+            visit_str += str(event)
+        visit_str += "}"
+        return visit_str
+
 
 class Patient(Entity):
     """Patient/Pt/Subject class."""
@@ -344,6 +354,8 @@ class Patient(Entity):
         patient_str += f"\tgender: {self.gender}\n"
         patient_str += f"\tadult: {self.adult}\n"
         patient_str += f"\tsmoker: {self.smoker}\n"
-        patient_str += "}"
         # TODO, print each visit
+        for visit in self.visits:
+            patient_str += str(visit)
+        patient_str += "}"
         return patient_str
