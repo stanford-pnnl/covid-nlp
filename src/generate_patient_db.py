@@ -242,7 +242,7 @@ def get_diagnosis_events_distress(events, event_cnt, date, concept_text, PT_text
     distress_diagnosis_event_found = False
     if concept_text in concept_text_distress:
         distress_diagnosis_event_found = True
-    if PT_text in PT_text_insomnia:
+    if PT_text in PT_text_distress:
         distress_diagnosis_event_found = True
 
     # If we find a distress diagnosis event, create it 
@@ -265,7 +265,7 @@ def get_diagnosis_events(events, event_cnt, df):
 
     for row in df.itertuples():
         #import pdb;pdb.set_trace()
-        date = row.date
+        date = row.date.strftime('%Y-%m-%d')
 
         HLGT_text = row.HLGT_text
         PT_text = row.PT_text
@@ -283,14 +283,16 @@ def get_diagnosis_events(events, event_cnt, df):
         get_diagnosis_events_distress(events, event_cnt, date, concept_text, PT_text)
 
     #print(f"columns: {columns}")
+    print("Top 10 diagnosis ")
+    import pdb;pdb.set_trace()
 
 def get_events(df):
     event_cnt = Counter()
     events = {}
     # Diagnosis Events
     get_diagnosis_events(events, event_cnt, df)
-    print(f"Found {event_cnt['id']} total events")
     print(f"Found {event_cnt['diagnosis']} diagnosis events")
+    print(f"Found {event_cnt['id']} total events")
     return events
 
 
@@ -298,7 +300,7 @@ def get_patient_visits(df):
     patient_visits = {}
     for row in df.itertuples():
         patient_id = row.patid
-        visit_id = row.date  #FIXME, currently using date as visit ID
+        visit_id = row.date.strftime('%Y-%m-%d') #FIXME, currently using date as visit ID
         if not visit_id:
             continue  # skip if missing ID
         if not patient_visits.get(patient_id, None):
