@@ -242,13 +242,13 @@ class Event(Entity):
         return event_equal
 
     def __str__(self):
-        event_str = "Event {\n"
-        event_str += f"\tentity_id: {self.entity_id}\n"
-        event_str += f"\tchartdate: {self.chartdate}\n"
-        event_str += f"\tevent_type: {self.event_type}\n"
-        event_str += f"\tprovenance: {self.provenance}\n"
-        event_str += f"\troles: {self.roles}\n"
-        event_str += "}"
+        event_str = "\t\t\t\tEvent {\n"
+        event_str += f"\t\t\t\t\tentity_id: {self.entity_id}\n"
+        event_str += f"\t\t\t\t\tchartdate: {self.chartdate}\n"
+        event_str += f"\t\t\t\t\tevent_type: {self.event_type}\n"
+        event_str += f"\t\t\t\t\tprovenance: {self.provenance}\n"
+        event_str += f"\t\t\t\t\troles: {self.roles}\n"
+        event_str += "\t\t\t\t}\n"
         return event_str
 
 
@@ -277,13 +277,14 @@ class Visit(Entity):
         return visit_equal
 
     def __str__(self):
-        visit_str = "Visit {\n"
-        visit_str += f"\tentity_id: {self.entity_id}\n"
-        visit_str += f"\thadm_id: {self.hadm_id}\n"
-        visit_str += f"\tprovenance: {self.provenance}\n"
+        visit_str = "\t\tVisit {\n"
+        visit_str += f"\t\t\tentity_id: {self.entity_id}\n"
+        visit_str += f"\t\t\thadm_id: {self.hadm_id}\n"
+        visit_str += f"\t\t\tprovenance: {self.provenance}\n"
+        visit_str += f"\t\t\tevents: [\n"
         for event in self.events:
             visit_str += str(event)
-        visit_str += "}"
+        visit_str += "\t\t\t]\n"
         return visit_str
 
 
@@ -354,8 +355,10 @@ class Patient(Entity):
         patient_str += f"\tgender: {self.gender}\n"
         patient_str += f"\tadult: {self.adult}\n"
         patient_str += f"\tsmoker: {self.smoker}\n"
-        # TODO, print each visit
+        patient_str += f"\tvisits: [\n"
+
         for visit in self.visits:
             patient_str += str(visit)
+        patient_str += "\t]\n"
         patient_str += "}"
         return patient_str
