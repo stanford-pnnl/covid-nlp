@@ -1,6 +1,7 @@
 # Patient DB
 import json
 from data_schema import EntityDecoder
+from collections import Counter
 
 class PatientDB():
     "Database composed of patient->visit->event relationships"
@@ -28,6 +29,7 @@ class PatientDB():
         matched_patient_ids = set()
         matched_visit_ids = set()
         matched_event_ids = set()
+
         for patient in self.patients.values():
             patient_id = patient.entity_id
             matched_patient = False
@@ -57,3 +59,18 @@ class PatientDB():
         for patient_id in patient_ids:
             patient = patient_db.patients[patient_id]
             self.add_patient(patient)
+
+    def get_all_diagnosis(self):
+        diagnosis_counter = dict()
+        diagnosis_counter['diagnosis_icd9'] = Counter()
+        diagnosis_counter['diagnosis_name'] = Counter()
+        for patient in self.patients.values():
+            for visit in patient.visits:
+                for event in visit.events:
+                    if event.event_type != 'DiagnosisEvent':
+                        continue
+                    diagnosis_icd9 = event.roles['diagnosis_icd9']
+                    diagnosis_name = event.roles['diagnosis_name']
+                    diagnosis_counter['diagnosis_icd9'][diagnosis_icd9] += 1
+                    diagnosis_counter['diagnosis_name'][diagnosis_name] += 1
+        return diagnosis_counter
