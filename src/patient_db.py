@@ -14,7 +14,6 @@ class PatientDB():
             for l in f:
                 patient = json.loads(l, cls=EntityDecoder)
                 self.add_patient(patient)
-                self.patients[str(patient_id)] = patient
     
     def add_patient(self, patient):
         patient_id = patient.entity_id
