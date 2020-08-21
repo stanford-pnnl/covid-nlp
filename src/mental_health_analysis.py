@@ -9,8 +9,10 @@ def mental_health_co_morbidities(patients, terms):
     patients_matched = PatientDB()
     for term in terms:
         print(f"Matching for term: {term}")
-        term_patients_matched = patients.match_term(term, event_types=['DiagnosisEvent'])
+        term_patients_matched, term_matches = \
+                patients.match_term(term, event_keys=['diagnosis_name'], event_types=['DiagnosisEvent'])
         patients_matched.merge_patients(term_patients_matched)
+        #import pdb;pdb.set_trace()
 
     print(f"{len(patients_matched.patients)} patients matched")
     import pdb;pdb.set_trace()
@@ -29,7 +31,7 @@ def main():
     import pdb;pdb.set_trace()
 
     print("Question 1:")
-    question_one_terms = ['depression', 'anxiety', 'insomnia', 'distress']
+    question_one_terms = ['Depression', 'Anxiety', 'Insomnia', 'Distress']
     answer_one = mental_health_co_morbidities(patients, question_one_terms)
 
     # Q2

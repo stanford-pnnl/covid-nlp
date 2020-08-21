@@ -22,24 +22,33 @@ class PatientDB():
             pass
         self.patients[str(patient_id)] = patient
 
-    def match_term(self, term, event_types=['']):
+    def match_term(self, term, event_keys='', event_types=['']):
         matched_patients = PatientDB()
+        matches = set()
+        matched_patient_ids = set()
+        matched_visit_ids = set()
+        matched_event_ids = set()
         for patient in self.patients.values():
+            patient_id = patient.entity_id
             matched_patient = False
             for visit in patient.visits:
-                if matched_patient:
-                    break
+                visit_id = visit.entity_id
                 for event in visit.events:
-                    if matched_patient:
-                        break
+                    event_id = event.entity_id
                     if event.event_type not in event_types:
-                        continue 
-                    compare_term = event.roles['diagnosis_name']
-                    if term == compare_term:
-                        matched_patients.add_patient(patient)
-                        matched_patient = True
-        print(f"Term: {term}, matched {len(self.patients)} patients")
-        return matched_patients
+                        continue
+                    for key in event_keys:
+                        compare_term = event.roles[key]
+                        if term == compare_term:
+                            matched_patient = True
+                            matched_patient_ids.add(patient_id)
+                            matched_visit_ids.add(visit_id)
+                            matched_event_ids.add(event_id)
+                            matches.add((patient_id, visit_id, event_id, key, term))
+            if matched_patient:
+                matched_patients.add_patient(patient)
+        print(f"Term: {term}, matched {len(matched_patients.patients)} patients")
+        return matched_patients, matches
                         
     def merge_patients(self, patient_db):
         print(f"Merging patient DBs...")
