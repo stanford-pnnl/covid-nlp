@@ -12,10 +12,14 @@ from data_schema import EntityEncoder, Event, Patient, Visit
 from typing import Dict, Set, Any, List
 import time
 import json
+import glob
+import dask
+import dask.dataframe as dd
+#import pyarrow
 
 def get_df(path):
     if '.parquet' in path:
-        df = pd.read_parquet(path, engine='pyarrow')
+        df = pd.read_parquet(path, engine='fastparquet')
     elif '.hdf' in path:
         df = pd.read_hdf(path)
     else:
@@ -26,9 +30,16 @@ def get_df(path):
 
 
 def get_patient_ids(df, key):
-    n_patient_ids = df[key].nunique()
-    patient_ids = df[key].unique().tolist()
-    print(f"Found {n_patient_ids} patient IDs")
+    #n_patient_ids = str(df[key].nunique())
+    #patient_ids = df[key].unique()
+    #patient_ids = list(patient_ids)
+    #patient_ids = df.patid.drop_duplicates()
+    unique_patient_ids = df.patid.unique()
+    computed_unique_patient_ids = unique_patient_ids.compute()
+    import pdb;pdb.set_trace()
+    patient_ids = computed_unique_patient_ids.tolist()
+
+    print(f"Found {len(patient_ids)} patient IDs")
     return patient_ids
 
 def generate_patients_from_ids(patient_ids: Set[str]) -> Dict:
@@ -37,7 +48,7 @@ def generate_patients_from_ids(patient_ids: Set[str]) -> Dict:
     with tqdm(total=len(patient_ids), desc="Generating Patients from IDs")\
             as pbar:
         for patient_id in patient_ids:
-            patients[patient_id] = Patient(patient_id=patient_id)
+            patients[str(patient_id)] = Patient(patient_id=str(patient_id))
             pbar.update(1)
 
     return patients
@@ -86,12 +97,18 @@ def get_distinct_column_values(df, output_dir, keys):
     print("Getting distinct values from columns and dumping to files")
     for key in sorted(keys):
         try:
-            distinct_column_values = df[key].unique().tolist()
+            distinct_column_values = list(df[key].unique())#.tolist()
         except KeyError:
             print(f"\t{key}, not in dataframe, skipping...")
             continue
         except TypeError:
             print(f"\t{key}, TypeError, skipping...")
+            continue
+        except AttributeError:
+            print(f"\t{key}, AttributeError, skipping...")
+            continue
+        except NotImplementedError:
+            print(f"\t{key}, NotImplementedError, skipping...")
             continue
 
         output_path = f"{output_dir}/{key}.txt"
@@ -283,8 +300,8 @@ def get_diagnosis_events(events, event_cnt, df):
         get_diagnosis_events_distress(events, event_cnt, date, concept_text, PT_text)
 
     #print(f"columns: {columns}")
-    print("Top 10 diagnosis ")
-    import pdb;pdb.set_trace()
+    #print("Top 10 diagnosis ")
+    #import pdb;pdb.set_trace()
 
 def get_events(df):
     event_cnt = Counter()
@@ -341,7 +358,7 @@ def attach_visits_to_patients(visits: Dict[str, Visit],
     # Attach visits to Patients
     for visit in visits.values():
         try:
-            patients[visit.provenance].visits.append(visit)
+            patients[str(visit.provenance)].visits.append(visit)
             num_successful_keys += 1
         except KeyError:
             num_missing_keys += 1
@@ -378,13 +395,25 @@ def main():
     notes_2018_2019_dir = f"{covid_data_dir}/notes_20180901_20190701/extracted_notes"
     # Currently just testing one file, should eventually iterate through all extracted files
     #meddra_extractions_path = f"{meddra_extractions_dir}/meddra_hier_batch3.hdf"
-    meddra_extractions_path = f"{notes_2018_2019_dir}/extracted_notes_batch391.parquet"
+
+    # TODO: use all paths
+    #notes_2019_2020_paths = glob.glob(f"{notes_2019_2020_dir}/extracted_note_batch*.parquet")
+    notes_2018_2019_paths = glob.glob(f"{notes_2018_2019_dir}/extracted_notes_batch*.parquet")
+
     # Generate patient dump path
     patients_dump_path = generate_path_with_time(path='output/patients', extension='jsonl')
 
+    # FIXME: dask test
+    path_pattern = f"{notes_2018_2019_dir}/extracted_notes_batch040.parquet"
+   
+    use_dask = True
+    if use_dask:
+        print("Using dask")
+        meddra_extractions = dd.read_parquet(path_pattern, engine='fastparquet')
+    else:
+        print("Using pandas")
+        meddra_extractions = get_df(path_pattern)
 
-    # get batch #3 of medDRA extractions from file
-    meddra_extractions = get_df(meddra_extractions_path)
     columns = sorted(meddra_extractions.columns.tolist())
     print(f"Dataframe column names:\n\t{columns}")
     # Dump distinct column values for debug
@@ -397,11 +426,16 @@ def main():
     except OSError:
         pass
 
-    get_distinct_column_values(meddra_extractions, distinct_column_values_dir, columns)
+    sample_column_values = False
+    if sample_column_values:
+        get_distinct_column_values(meddra_extractions, distinct_column_values_dir, columns)
 
     # Get distinct Patient ID values from dataframe
     patient_ids = get_patient_ids(meddra_extractions, 'patid')
-   
+    print(f"len(patient_ids): {len(patient_ids)}")
+    #patient_ids = [str(x) for x in patient_ids]
+    import pdb;pdb.set_trace()
+
     events = get_events(meddra_extractions)
     if not events:
         print("Empty events dict! Exiting...")
@@ -413,12 +447,13 @@ def main():
 
     # Create visit objects
     visits = create_visits(patient_visits)
+    print(f"len(visits): {len(visits)}")
 
     # Attach events to visits
     attach_events_to_visits(events, visits)
 
     # Filter out patient IDs that don't have any visits
-    patient_ids = select_non_empty_patients(patient_ids, visits)
+    #patient_ids = select_non_empty_patients(patient_ids, visits)
 
     # Generate patients from IDs
     patients = generate_patients_from_ids(patient_ids)
