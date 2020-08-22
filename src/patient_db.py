@@ -63,10 +63,9 @@ class PatientDB():
         total_num_visits = 0
         for patient_id, patient in self.patients.items():
             num_visits = len(patient.visits)
-            print(f"num_visits: {num_visits}")
+            #print(f"num_visits: {num_visits}")
             if num_visits > 1:
-                print("Found a patient with more than one visit")
-                import pdb;pdb.set_trace()
+                print(f"Found a patient with {num_visits} visits")
             total_num_visits += num_visits
         stats = dict()
         stats['avg_num_visits'] = total_num_visits / float(len(self.patients))
