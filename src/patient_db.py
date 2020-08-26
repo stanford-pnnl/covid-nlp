@@ -23,7 +23,7 @@ class PatientDB():
             pass
         self.patients[str(patient_id)] = patient
 
-    def match_term(self, term, event_keys='', event_types=['']):
+    def match_patients(self, term, event_keys='', event_types=['']):
         matched_patients = PatientDB()
         matches = set()
         matched_patient_ids = set()
@@ -63,57 +63,75 @@ class PatientDB():
         total_num_visits = 0
         for patient_id, patient in self.patients.items():
             num_visits = len(patient.visits)
-            #print(f"num_visits: {num_visits}")
-            if num_visits > 1:
-                print(f"Found a patient with {num_visits} visits")
             total_num_visits += num_visits
         stats = dict()
         stats['avg_num_visits'] = total_num_visits / float(len(self.patients))
         return stats
 
-    def get_diagnosis_event_info(self):
-        diagnosis_counter = dict()
-        diagnosis_items = dict()
+    def get_event_counters(self, event_types):
+        counters = dict()
+        items = dict()
+        event_roles = set()
         entity_levels = ['patient', 'visit', 'event']
-        diagnosis_event_roles = ['diagnosis_icd9', 'diagnosis_name']
+        
+        for event_type in event_types:
+            if event_type == 'DiagnosisEvent':
+                event_type_roles = ['diagnosis_icd9', 'diagnosis_name', 'diagnosis_long_name']
+            elif event_type == 'LabEvent':
+                event_type_roles = ['test_name', 'test_status', 'test_value']
+            elif event_type == 'MedicationEvent':
+                event_type_roles = ['dosage', 'duration', 'indication', 'medication']
+            elif event_type == 'PatientEvent':
+                pass # TODO event_type_roles= ['attribute', 'attribute_value']
+            elif event_type == 'ProcedureEvent':
+                event_type_roles = ['procedure_icd9', 'procedure_name', 'targeted_organs']
+            elif event_type == 'VitalEvent':
+                event_type_roles = ['location', 'vital_outcome']
 
-        # prepare diagnosis_counter and diagnosis_items
+            event_roles.update(event_type_roles)
+
+
+        # prepare event_counter and event_items
         for entity_level in entity_levels:
-            diagnosis_counter[entity_level] = dict()
-            diagnosis_items[entity_level] = dict()
-            for role in diagnosis_event_roles:
-                diagnosis_counter[entity_level][role] = Counter()
-                diagnosis_items[entity_level][role] = set()
+            counters[entity_level] = dict()
+            items[entity_level] = dict()
+            for role in event_roles:
+                counters[entity_level][role] = Counter()
+                items[entity_level][role] = set()
 
-        patient_items = diagnosis_items['patient']
-        visit_items = diagnosis_items['visit']
-        event_items = diagnosis_items['event']
+        patient_items = items['patient']
+        visit_items = items['visit']
+        event_items = items['event']
 
-        patient_counter = diagnosis_counter['patient']
-        visit_counter = diagnosis_counter['visit']
-        event_counter = diagnosis_counter['event']
+        patient_counter = counters['patient']
+        visit_counter = counters['visit']
+        event_counter = counters['event']
+        
+        entity_count_per_level = Counter()
 
         # Iterate through all patients
         for patient in self.patients.values():
+            entity_count_per_level['patient'] += 1
             # Clear patient items set
-            for role in diagnosis_event_roles:
+            for role in event_roles:
                 patient_items[role].clear() 
             # Iterate through all patient visits
             for visit in patient.visits:
+                entity_count_per_level['visit'] += 1
                 # Clear visit items set
-                for role in diagnosis_event_roles:
+                for role in event_roles:
                     visit_items[role].clear()
                 # Iterate through all visit events
                 for event in visit.events:
-                    # Only check DiagnosisEvents
-                    if event.event_type != 'DiagnosisEvent':
+                    entity_count_per_level['event'] += 1
+                    if event.event_type not in event_types:
                         continue
                     # Clear event items
-                    for role in diagnosis_event_roles:
+                    for role in event_roles:
                         event_items[role].clear()
                     
                     # Add items
-                    for role in diagnosis_event_roles:
+                    for role in event_roles:
                         item = event.roles[role]
                         # Add item to all class sets
                         event_items[role].add(item)
@@ -133,7 +151,8 @@ class PatientDB():
                 for item in items:
                     patient_counter[role_key][item] += 1
 
-        return diagnosis_counter
+        return counters, event_roles, entity_levels, entity_count_per_level
+
 
 def get_top_k(agg_counts, keys, roles, k):
     top_k = dict()
@@ -142,4 +161,4 @@ def get_top_k(agg_counts, keys, roles, k):
         for role in roles:
             top_k[key][role] = agg_counts[key][role].most_common(k)
 
-    return top_k
+    return k, top_k
