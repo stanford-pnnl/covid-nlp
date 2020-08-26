@@ -184,6 +184,7 @@ class Event(Entity):
         self.event_type: str = event_type
         self.provenance: str = provenance  # refers to parent Visit.hadm_id
         self.roles: Dict = {}
+        # TODO add metadata source attributes
     
     def patient_role(self, attribute: str, attribute_value: Any):
         self.event_type = "PatientEvent"
@@ -304,6 +305,8 @@ class Patient(Entity):
         self.smoker: bool = patient_smoker
         # TODO, make sure visits are unique
         self.visits: List[Visit] = []
+        # TODO, think about how to incorprate item not associated with Visits or Events 
+        # e.g. prescription management, maintenance items
 
     #FIXME
     def update(self, patient_attributes):
