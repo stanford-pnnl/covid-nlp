@@ -177,12 +177,13 @@ class Event(Entity):
 
     def __init__(self, event_embedding=None, event_id: str = "",
                  chartdate: str = "", event_type: str = "",
-                 provenance: str = ""):
+                 provenance: str = "", patient_id: str = ""):
         """Initialize Event."""
         Entity.__init__(self, event_embedding, event_id, ETYPE_EVENT)
         self.chartdate: str = chartdate
         self.event_type: str = event_type
         self.provenance: str = provenance  # refers to parent Visit.hadm_id
+        self.patient_id: str = patient_id
         self.roles: Dict = {}
         # TODO add metadata source attributes
     
@@ -200,11 +201,12 @@ class Event(Entity):
         self.roles['indication'] = indication
         self.roles['medication'] = medication
 
-    def diagnosis_role(self, diagnosis_icd9: str, diagnosis_name: str):
+    def diagnosis_role(self, diagnosis_icd9: str, diagnosis_name: str, diagnosis_long_name: str):
         """Diagnosis event helper."""
         self.event_type = "DiagnosisEvent"
         self.roles['diagnosis_icd9'] = diagnosis_icd9
         self.roles['diagnosis_name'] = diagnosis_name
+        self.roles['diagnosis_long_name'] = diagnosis_long_name
 
     def procedure_role(self, procedure_icd9: str, procedure_name: str,
                        targeted_organs: List[str]):
@@ -257,12 +259,13 @@ class Visit(Entity):
     """Visit class."""
 
     def __init__(self, visit_embedding=None, hadm_id: str = "",
-                 provenance: str = ""):
+            provenance: str = "", patient_id: str = ""):
         """Initialize Visit."""
         Entity.__init__(self, visit_embedding, hadm_id, ETYPE_VISIT)
         self.hadm_id: str = hadm_id
         # refers to parent Patient.patient_id
         self.provenance: str = provenance
+        self.patient_id: str = patient_id
         self.events: List[Event] = []
 
     def __eq__(self, other):
