@@ -15,11 +15,11 @@ import json
 import glob
 import dask
 import dask.dataframe as dd
-#import pyarrow
+import pyarrow
 
 def get_df(path):
     if '.parquet' in path:
-        df = pd.read_parquet(path, engine='fastparquet')
+        df = pd.read_parquet(path, engine='pyarrow')
     elif '.hdf' in path:
         df = pd.read_hdf(path)
     else:
@@ -29,27 +29,25 @@ def get_df(path):
     return df
 
 
-def get_patient_ids(df, key):
-    #n_patient_ids = str(df[key].nunique())
-    #patient_ids = df[key].unique()
-    #patient_ids = list(patient_ids)
-    #patient_ids = df.patid.drop_duplicates()
-    unique_patient_ids = df.patid.unique()
-    computed_unique_patient_ids = unique_patient_ids.compute()
-    import pdb;pdb.set_trace()
-    patient_ids = computed_unique_patient_ids.tolist()
-
-    print(f"Found {len(patient_ids)} patient IDs")
-    return patient_ids
+def get_patient_ids(df, use_dask=False):
+    if use_dask:
+        unique_patient_ids = df.patid.unique().compute()
+        nunique_patient_ids = df.patid.nunique().compute()
+    else:
+        unique_patient_ids = df.patid.unique()
+        nunique_patient_ids = df.patid.unique()
+    print(f"Found {nunique_patient_ids} patient IDs")
+    return unique_patient_ids
 
 def generate_patients_from_ids(patient_ids: Set[str]) -> Dict:
     """Generate patients from list of IDs."""
     patients: Dict = {}
-    with tqdm(total=len(patient_ids), desc="Generating Patients from IDs")\
-            as pbar:
-        for patient_id in patient_ids:
-            patients[str(patient_id)] = Patient(patient_id=str(patient_id))
-            pbar.update(1)
+    # FIXME
+    # with tqdm(total=len(patient_ids), desc="Generating Patients from IDs")\
+    #         as pbar:
+    for patient_id in patient_ids:
+        patients[str(patient_id)] = Patient(patient_id=str(patient_id))
+        #pbar.update(1)
 
     return patients
 
@@ -212,7 +210,7 @@ def get_diagnosis_events_anxiety(events, event_cnt, date, concept_text, PT_text)
         anxiety_diagnosis_event.roles['PT_text'] = PT_text
         events[str(event_cnt['id'])] = anxiety_diagnosis_event
  
-
+# TODO match with ability to define meddra level matches
 def get_diagnosis_events_insomnia(events, event_cnt, date, concept_text, PT_text):
     concept_text_insomnia = [
             'Behavorial insomnia of childhood'
@@ -230,6 +228,8 @@ def get_diagnosis_events_insomnia(events, event_cnt, date, concept_text, PT_text
             'Middle insomnia',
             'Psychophysiologi insomnia',
             'Terminal insomnia']
+
+    #Match(SOC="*", HLGT="cardiac_valve_disorders", HLT="", PT="")
 
     # Check for insomnia
     insomnia_diagnosis_event_found = False
@@ -398,18 +398,18 @@ def main():
 
     # TODO: use all paths
     #notes_2019_2020_paths = glob.glob(f"{notes_2019_2020_dir}/extracted_note_batch*.parquet")
-    notes_2018_2019_paths = glob.glob(f"{notes_2018_2019_dir}/extracted_notes_batch*.parquet")
+    #notes_2018_2019_paths = glob.glob(f"{notes_2018_2019_dir}/extracted_notes_batch*.parquet")
 
     # Generate patient dump path
     patients_dump_path = generate_path_with_time(path='output/patients', extension='jsonl')
 
     # FIXME: dask test
-    path_pattern = f"{notes_2018_2019_dir}/extracted_notes_batch040.parquet"
+    path_pattern = f"{notes_2018_2019_dir}/extracted_notes_batch0*.parquet"
    
     use_dask = True
     if use_dask:
         print("Using dask")
-        meddra_extractions = dd.read_parquet(path_pattern, engine='fastparquet')
+        meddra_extractions = dd.read_parquet(path_pattern, engine='pyarrow')
     else:
         print("Using pandas")
         meddra_extractions = get_df(path_pattern)
@@ -431,7 +431,7 @@ def main():
         get_distinct_column_values(meddra_extractions, distinct_column_values_dir, columns)
 
     # Get distinct Patient ID values from dataframe
-    patient_ids = get_patient_ids(meddra_extractions, 'patid')
+    patient_ids = get_patient_ids(meddra_extractions, use_dask)
     print(f"len(patient_ids): {len(patient_ids)}")
     #patient_ids = [str(x) for x in patient_ids]
     import pdb;pdb.set_trace()
