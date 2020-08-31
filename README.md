@@ -14,5 +14,22 @@ Files:
 	* patient_db.py
 		- PatientDB class
 
+Features:
+	* generate_patient_db.py
+		1. Capture DiagnosisEvents
+			* Depression
+			* Anxiety
+			* Insomnia
+			* Distress
+		2. Meddra matching levels
+			* PT
+			* concept_text
+			* TODO: other meddra levels
+	* patient_db.py
+		1. Count matches per entity level (patient, visit, event)
+		2. Patient aggregation by time ( Can match year, month, and day values)
+
 TODO:
-	
+
+	1. Read in patient demographic information
+	2. Add aggregation by patient demographics attributes 
