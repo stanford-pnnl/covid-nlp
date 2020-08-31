@@ -16,6 +16,8 @@ import glob
 import dask
 import dask.dataframe as dd
 import pyarrow
+import argparse
+
 
 def get_df(path, use_dask):
     if use_dask:
@@ -410,33 +412,25 @@ def select_non_empty_patients(patient_ids: Set[str],
 
 
 
-def main():
+def main(args):
     # Setup variables
     output_dir = 'output'
     distinct_column_values_dir = f"{output_dir}/distinct_column_values"
-    repo_dir = '/home/colbyham/covid-nlp'
-    #data_dir = 'data'
-    #meddra_extractions_dir = f"{data_dir}/medDRA_extractions"
     covid_data_dir = f"/share/pi/stamang/covid/data"
     notes_2019_2020_dir = f"{covid_data_dir}/notes_20190901_20200701/extracted_notes"
     notes_2018_2019_dir = f"{covid_data_dir}/notes_20180901_20190701/extracted_notes"
-    # Currently just testing one file, should eventually iterate through all extracted files
-    #meddra_extractions_path = f"{meddra_extractions_dir}/meddra_hier_batch3.hdf"
 
-    # TODO: use all paths
-    #notes_2019_2020_paths = glob.glob(f"{notes_2019_2020_dir}/extracted_note_batch*.parquet")
-    #notes_2018_2019_paths = glob.glob(f"{notes_2018_2019_dir}/extracted_notes_batch*.parquet")
+    notes_2019_2020_paths = f"{notes_2019_2020_dir}/extracted_note_batch*.parquet"
+    notes_2018_2019_paths = f"{notes_2018_2019_dir}/extracted_notes_batch*.parquet"
 
     # Generate patient dump path
-    patients_dump_path = f"{repo_dir}/output/patients"
+    patients_dump_path = f"{args.output_dir}/patients"
     patients_dump_path_unique = generate_path_with_time(path=patients_dump_path, extension='jsonl')
 
-    # FIXME: dask test
     path_pattern = f"{notes_2018_2019_dir}/extracted_notes_batch004.parquet"
    
-    use_dask = True
-    print(f"use_dask: {use_dask}")
-    meddra_extractions = get_df(path_pattern, use_dask)
+    print(f"use_dask: {args.use_dask}")
+    meddra_extractions = get_df(path_pattern, args.use_dask)
 
     columns = sorted(meddra_extractions.columns.tolist())
     print(f"Dataframe column names:\n\t{columns}")
@@ -450,12 +444,12 @@ def main():
     except OSError:
         pass
 
-    sample_column_values = False
-    if sample_column_values:
+    # FIXME: not currently working
+    if args.sample_column_values:
         get_distinct_column_values(meddra_extractions, distinct_column_values_dir, columns)
 
     # Get distinct Patient ID values from dataframe
-    patient_ids = get_patient_ids(meddra_extractions, use_dask)
+    patient_ids = get_patient_ids(meddra_extractions, args.use_dask)
     print(f"len(patient_ids): {len(patient_ids)}")
     #patient_ids = [str(x) for x in patient_ids]
     #import pdb;pdb.set_trace()
@@ -495,4 +489,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--use_dask', action='store_true')
+    parser.add_argument('--sample_column_values', action='store_true')
+    parser.add_argument('--output_dir', help='Path to output directory')
+    args: argparse.Namespace = parser.parse_args()
+    main(args)

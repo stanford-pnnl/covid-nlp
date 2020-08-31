@@ -1,6 +1,7 @@
 from patient_db import PatientDB, get_top_k
 import json
 from collections import Counter
+import argparse
 
 
 def mental_health_co_morbidities(patients, search_terms):
@@ -61,14 +62,13 @@ def mental_health_co_morbidities(patients, search_terms):
     import pdb;pdb.set_trace()
 
 
-def main():
+def main(args):
     data_dir = "/home/colbyham/covid-nlp/output"
     patients_db_path = f"{data_dir}/patients_20200831-050502.jsonl"
 
     # Create and load an instance of PatientDB
     patients = PatientDB(name='all')
-    patients.load(patients_db_path)
-    import pdb;pdb.set_trace()
+    patients.load(args.patient_db_path)
 
     print("Question 1:")
     question_one_terms = ['Depression', 'Anxiety', 'Insomnia', 'Distress']
@@ -83,4 +83,7 @@ def main():
     #mental_health_age_sex_distribution(patients, question_three_terms)
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--patient_db_path', help='PatientDB dump path', required=True)
+    args: argparse.Namespace = parser.parse_args()
+    main(args)
