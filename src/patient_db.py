@@ -1,7 +1,9 @@
 # Patient DB
 import json
-from data_schema import EntityDecoder
+from data_schema import EntityDecoder, Patient
 from collections import Counter
+from datetime import datetime, timedelta, date
+from dateutil import rrule
 
 class PatientDB():
     "Database composed of patient->visit->event relationships"
@@ -152,6 +154,73 @@ class PatientDB():
                     patient_counter[role_key][item] += 1
 
         return counters, event_roles, entity_levels, entity_count_per_level
+
+    def get_visit_dates(self, time_freq='M'):
+        visit_dates = set()
+        for patient_id, patient in self.patients.items():
+            for visit in patient.visits:
+                visit_dates.add(visit.date)
+        # Get range start and end values
+        min_visit_date = datetime.max
+        max_visit_date = datetime.min
+        for visit_date in visit_dates:
+            if visit_date < min_visit_date:
+                min_visit_date = visit_date
+            elif visit_date >= max_visit_date:
+                max_visit_date = visit_date
+       
+        start_visit_date = datetime(min_visit_date.year, min_visit_date.month, 1)
+        end_visit_date = datetime(max_visit_date.year, max_visit_date.month, 1)
+        delta = timedelta()
+        for visit_date in rrule.rrule(rrule.MONTHLY, dtstart=start_visit_date, until=end_visit_date):
+            print(visit_date)
+        import pdb;pdb.set_trace()
+        return visit_dates
+
+    def select_date(self, year=None, month=None, day=None):
+        match_year=bool(year)
+        match_month=bool(month)
+        match_day=bool(day)
+        date_db = PatientDB()
+        for patient_id, patient in self.patients.items():
+            patient_match = False
+            matched_visits = []
+            for visit in patient.visits:
+                visit_date = visit.date
+                if match_year:
+                    if year != visit_date.year:
+                        continue
+                if match_month:
+                    if month != visit_date.month:
+                        continue
+                if match_day:
+                    if day != visit_date.day:
+                        continue
+                # We have a match!
+                #import pdb;pdb.set_trace()
+                matched_visits.append(visit)
+                patient_match = True
+            if patient_match:
+                matched_patient = Patient(patient_id=patient_id)
+                for matched_visit in matched_visits:
+                    matched_patient.visits.append(matched_visit)
+                date_db.add_patient(matched_patient)
+        return date_db
+                
+
+    def agg_time(self, time_freq='M'):
+        # Split patient DB in a DB per each time freq
+        visit_dates = self.get_visit_dates(time_freq)
+        visit_date_dbs = dict()
+        #freq_aggs = self.agg_key(entity_level='Visit', '')
+        # iterate through visit dates and create a patientDB per time step
+        for visit_date in visit_dates:
+            visit_date_db = self.select_date(year=visit_date.year, month=visit_date.month)
+            date_key = visit_date.strftime("%Y-%m")
+            visit_date_dbs[date_key] = visit_date_db
+        
+        import pdb;pdb.set_trace()
+        return visit_date_dbs
 
 
 def get_top_k(agg_counts, keys, roles, k):
