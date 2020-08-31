@@ -15,6 +15,7 @@ Files:
 		- PatientDB class
 
 Features:
+
 	* generate_patient_db.py
 		1. Capture DiagnosisEvents
 			* Depression
