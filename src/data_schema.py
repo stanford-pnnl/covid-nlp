@@ -6,6 +6,7 @@ import re
 import sys
 from json import JSONDecoder, JSONEncoder
 from typing import Any, Dict, List, Set, Tuple
+from datetime import datetime
 
 #import neuralcoref
 #import spacy
@@ -67,7 +68,9 @@ class EntityDecoder(JSONDecoder):
     @staticmethod
     def decode_visit(obj):
         """Decode a Visit obj."""
-        v = Visit(visit_embedding=obj['entity_embedding'],
+        date_obj = datetime.strptime(obj['date'], '%Y-%m-%d')
+        v = Visit(date=date_obj,
+                  visit_embedding=obj['entity_embedding'],
                   hadm_id=obj['hadm_id'],
                   provenance=obj['provenance'])
         v.events.extend(obj['events'])
@@ -132,6 +135,7 @@ class EntityEncoder(JSONEncoder):
             'entity_id': obj.entity_id,
             'entity_embedding': obj.entity_embedding,
             'hadm_id': obj.hadm_id,
+            'date': obj.date.strftime("%Y-%m-%d"),
             'provenance': obj.provenance,
             'events': [self.default(e) for e in obj.events]
         }
@@ -258,11 +262,12 @@ class Event(Entity):
 class Visit(Entity):
     """Visit class."""
 
-    def __init__(self, visit_embedding=None, hadm_id: str = "",
+    def __init__(self, date, visit_embedding=None, hadm_id: str = "",
             provenance: str = "", patient_id: str = ""):
         """Initialize Visit."""
         Entity.__init__(self, visit_embedding, hadm_id, ETYPE_VISIT)
         self.hadm_id: str = hadm_id
+        self.date  = date  
         # refers to parent Patient.patient_id
         self.provenance: str = provenance
         self.patient_id: str = patient_id
