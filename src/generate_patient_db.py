@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import os
 import sys
 from collections import Counter
@@ -343,7 +343,9 @@ def create_visits(patient_visits: Dict[str, set]) -> Dict[str, Visit]:
         if not visits.get(patient_id):
             visits[patient_id] = dict()
         for hadm_id in visit_set:
-            visits[patient_id][hadm_id] = Visit(hadm_id=hadm_id, provenance=patient_id, patient_id=patient_id)
+            date_str = hadm_id
+            date_object = datetime.strptime(date_str, "%Y-%m-%d")
+            visits[patient_id][hadm_id] = Visit(date_object, hadm_id=hadm_id, provenance=patient_id, patient_id=patient_id)
     return visits
 
 
