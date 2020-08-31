@@ -94,7 +94,7 @@ def export_patients(path: str, patients: Dict[str, Any],
     print(f"{c}")
 
 
-def get_distinct_column_values(df, output_dir, keys):
+def get_distinct_column_values(df, output_dir, keys, use_dask=False):
     print("Getting distinct values from columns and dumping to files")
     for key in sorted(keys):
         try:
@@ -412,6 +412,7 @@ def main():
     # Setup variables
     output_dir = 'output'
     distinct_column_values_dir = f"{output_dir}/distinct_column_values"
+    repo_dir = '/home/colbyham/covid-nlp'
     #data_dir = 'data'
     #meddra_extractions_dir = f"{data_dir}/medDRA_extractions"
     covid_data_dir = f"/share/pi/stamang/covid/data"
@@ -425,7 +426,8 @@ def main():
     #notes_2018_2019_paths = glob.glob(f"{notes_2018_2019_dir}/extracted_notes_batch*.parquet")
 
     # Generate patient dump path
-    patients_dump_path = generate_path_with_time(path='output/patients', extension='jsonl')
+    patients_dump_path = f"{repo_dir}/output/patients"
+    patients_dump_path_unique = generate_path_with_time(path=patients_dump_path, extension='jsonl')
 
     # FIXME: dask test
     path_pattern = f"{notes_2018_2019_dir}/extracted_notes_batch004.parquet"
@@ -487,7 +489,7 @@ def main():
     #import pdb;pdb.set_trace()    
 
     # Dump patients
-    export_patients(patients_dump_path, patients, sorted_patient_keys)
+    export_patients(patients_dump_path_unique, patients, sorted_patient_keys)
 
 
 if __name__ == '__main__':
