@@ -285,6 +285,13 @@ def get_diagnosis_events_distress(events, event_cnt, date, concept_text, PT_text
         distress_diagnosis_event.roles['PT_text'] = PT_text
         events[str(event_cnt['id'])] = distress_diagnosis_event
 
+def format_date(date_obj):
+    try:
+        date = date_obj.strftime('%Y-%m-%d')
+    except AttributeError as e:
+        date = date_obj
+    return date
+
 
 def get_diagnosis_events(events, event_cnt, df):
     columns = dict()
@@ -294,7 +301,7 @@ def get_diagnosis_events(events, event_cnt, df):
 
     for row in df.itertuples():
         #import pdb;pdb.set_trace()
-        date = row.date.strftime('%Y-%m-%d')
+        date = format_date(row.date)
         patient_id = str(row.patid)
         HLGT_text = row.HLGT_text
         PT_text = row.PT_text
@@ -329,7 +336,7 @@ def get_patient_visits(df):
     patient_visits = {}
     for row in df.itertuples():
         patient_id = str(row.patid)
-        visit_id = row.date.strftime('%Y-%m-%d') #FIXME, currently using date as visit ID
+        visit_id = format_date(row.date) #FIXME, currently using date as visit ID
         if not visit_id:
             continue  # skip if missing ID
         if not patient_visits.get(patient_id, None):
@@ -417,18 +424,20 @@ def main(args):
     output_dir = 'output'
     distinct_column_values_dir = f"{output_dir}/distinct_column_values"
     covid_data_dir = f"/share/pi/stamang/covid/data"
-    notes_2019_2020_dir = f"{covid_data_dir}/notes_20190901_20200701/extracted_notes"
+    notes_2019_2020_dir = f"{covid_data_dir}/notes_20190901_20200701/labeled_extractions"
     notes_2018_2019_dir = f"{covid_data_dir}/notes_20180901_20190701/extracted_notes"
 
-    notes_2019_2020_paths = f"{notes_2019_2020_dir}/extracted_note_batch*.parquet"
+    notes_2019_2020_paths = f"{notes_2019_2020_dir}/all_POS_batch000_099.parquet"
     notes_2018_2019_paths = f"{notes_2018_2019_dir}/extracted_notes_batch*.parquet"
 
     # Generate patient dump path
     patients_dump_path = f"{args.output_dir}/patients"
     patients_dump_path_unique = generate_path_with_time(path=patients_dump_path, extension='jsonl')
 
-    path_pattern = f"{notes_2018_2019_dir}/extracted_notes_batch004.parquet"
-   
+    #path_pattern = f"{notes_2018_2019_dir}/extracted_notes_batch00*.parquet"
+    path_pattern = notes_2019_2020_paths
+    print(f"path_pattern: {path_pattern}")
+
     print(f"use_dask: {args.use_dask}")
     meddra_extractions = get_df(path_pattern, args.use_dask)
 
@@ -492,6 +501,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--use_dask', action='store_true')
     parser.add_argument('--sample_column_values', action='store_true')
-    parser.add_argument('--output_dir', help='Path to output directory')
+    parser.add_argument('--output_dir', default="/home/colbyham/output", help='Path to output directory')#, required=True)
     args: argparse.Namespace = parser.parse_args()
     main(args)
