@@ -45,6 +45,7 @@ def mental_health_co_morbidities(patients, search_terms):
 
     # Aggregate counts for each such diagnosis code either based on the number of visits or number of patients
     patient_matched_stats = patients_matched.get_stats()
+    import pdb;pdb.set_trace()
     print("Report top-k diagnosis codes")
     # Report top-k diagnosis codes
     k, top_k = get_top_k(diagnosis_event_counters, diagnosis_event_entity_levels, diagnosis_event_roles, k=10)
@@ -60,6 +61,7 @@ def mental_health_co_morbidities(patients, search_terms):
     monthly_splits = patients_matched.agg_time(time_freq='M')
 
     import pdb;pdb.set_trace()
+    print("END OF PROGRAM")
 
 
 def main(args):
