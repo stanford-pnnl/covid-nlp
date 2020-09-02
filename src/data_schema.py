@@ -4,31 +4,13 @@ import os
 import pickle
 import re
 import sys
+from datetime import datetime
 from json import JSONDecoder, JSONEncoder
 from typing import Any, Dict, List, Set, Tuple
-from datetime import datetime
-
-#import neuralcoref
-#import spacy
-#from spacy.lang.en import English
-
-#sys.path.insert(1, '../eventExtraction')
-#from utilities import flatten
 
 ETYPE_PATIENT = "Patient"
 ETYPE_VISIT = "Visit"
 ETYPE_EVENT = "Event"
-
-
-class Query():
-    def __init__(self, query_id, query_question, query_ett_type,
-                 query_ett_attr, query_event, query_embedding):
-        self.query_id = query_id
-        self.query = query_question
-        self.patient = '?'
-        self.query_entity_attribute = query_ett_attr
-        self.query_event = query_event
-        self.query_embedding = query_embedding
 
 
 class EntityDecoder(JSONDecoder):
