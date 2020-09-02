@@ -110,6 +110,8 @@ class PatientDB():
         event_counter = counters['event']
         
         entity_count_per_level = Counter()
+        
+        # Point out that items sets are temp
 
         # Iterate through all patients
         for patient in self.patients.values():
