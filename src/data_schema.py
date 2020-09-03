@@ -172,7 +172,7 @@ class Event(Entity):
         self.patient_id: str = patient_id
         self.roles: Dict = {}
         # TODO add metadata source attributes
-    
+
     def patient_role(self, attribute: str, attribute_value: Any):
         self.event_type = "PatientEvent"
         self.roles['attribute'] = attribute
@@ -230,14 +230,16 @@ class Event(Entity):
             provenance_equal and roles_equal
         return event_equal
 
-    def __str__(self):
-        event_str = "\t\t\t\tEvent {\n"
-        event_str += f"\t\t\t\t\tentity_id: {self.entity_id}\n"
-        event_str += f"\t\t\t\t\tchartdate: {self.chartdate}\n"
-        event_str += f"\t\t\t\t\tevent_type: {self.event_type}\n"
-        event_str += f"\t\t\t\t\tprovenance: {self.provenance}\n"
-        event_str += f"\t\t\t\t\troles: {self.roles}\n"
-        event_str += "\t\t\t\t}\n"
+    def __str__(self, sep="\t", indent1=4, indent2=5):
+        sep_1 = f"{sep*indent1}"
+        sep_2 = f"{sep*indent2}"
+        event_str = f"{sep_1}Event {'{'}\n"
+        event_str += f"{sep_2}entity_id: {self.entity_id}\n"
+        event_str += f"{sep_2}chartdate: {self.chartdate}\n"
+        event_str += f"{sep_2}event_type: {self.event_type}\n"
+        event_str += f"{sep_2}provenance: {self.provenance}\n"
+        event_str += f"{sep_2}roles: {self.roles}\n"
+        event_str += f"{sep_1}{'}'}\n"
         return event_str
 
 
@@ -249,7 +251,7 @@ class Visit(Entity):
         """Initialize Visit."""
         Entity.__init__(self, visit_embedding, hadm_id, ETYPE_VISIT)
         self.hadm_id: str = hadm_id
-        self.date  = date  
+        self.date  = date
         # refers to parent Patient.patient_id
         self.provenance: str = provenance
         self.patient_id: str = patient_id
@@ -267,15 +269,18 @@ class Visit(Entity):
         visit_equal = hadm_id_equal and provenance_equal and events_equal
         return visit_equal
 
-    def __str__(self):
-        visit_str = "\t\tVisit {\n"
-        visit_str += f"\t\t\tentity_id: {self.entity_id}\n"
-        visit_str += f"\t\t\thadm_id: {self.hadm_id}\n"
-        visit_str += f"\t\t\tprovenance: {self.provenance}\n"
-        visit_str += f"\t\t\tevents: [\n"
+    def __str__(self, sep="\t", indent1=2, indent2=3):
+        sep_1 = f"{sep*indent1}"
+        sep_2 = f"{sep*indent2}"
+        visit_str = f"{sep_1}Visit {'{'}\n"
+        visit_str += f"{sep_2}entity_id: {self.entity_id}\n"
+        visit_str += f"{sep_2}hadm_id: {self.hadm_id}\n"
+        visit_str += f"{sep_2}provenance: {self.provenance}\n"
+        visit_str += f"{sep_2}events: [\n"
         for event in self.events:
             visit_str += str(event)
-        visit_str += "\t\t\t]\n"
+        visit_str += f"{sep_2}]\n"
+        visit_str += f"{sep_1}{'}'}"
         return visit_str
 
 
@@ -319,7 +324,7 @@ class Patient(Entity):
         if patient_attributes.get('smoker'):
             self.smoker = patient_attributes['smoker']
             logging.debug("\tPatient smoker updated")
-    
+
     def num_visits(self):
         return len(self.visits)
 
@@ -340,18 +345,20 @@ class Patient(Entity):
             gender_equal and smoker_equal and visits_equal
         return patient_equal
 
-    def __str__(self):
-        patient_str = "Patient {\n"
-        patient_str += f"\tentity_id: {self.entity_id}\n"
-        patient_str += f"\tage: {self.age}\n"
-        patient_str += f"\tdob: {self.dob}\n"
-        patient_str += f"\tgender: {self.gender}\n"
-        patient_str += f"\tadult: {self.adult}\n"
-        patient_str += f"\tsmoker: {self.smoker}\n"
-        patient_str += f"\tvisits: [\n"
+    def __str__(self, sep="\t", indent1=0, indent2=1):
+        sep_1 = f"{sep * indent1}"
+        sep_2 = f"{sep * indent2}"
+        patient_str = f"{sep_1}Patient {'{'}\n"
+        patient_str += f"{sep_2}entity_id: {self.entity_id}\n"
+        patient_str += f"{sep_2}age: {self.age}\n"
+        patient_str += f"{sep_2}dob: {self.dob}\n"
+        patient_str += f"{sep_2}gender: {self.gender}\n"
+        patient_str += f"{sep_2}adult: {self.adult}\n"
+        patient_str += f"{sep_2}smoker: {self.smoker}\n"
+        patient_str += f"{sep_2}visits: [\n"
 
         for visit in self.visits:
-            patient_str += str(visit)
-        patient_str += "\t]\n"
-        patient_str += "}"
+            patient_str += str(visit, sep=sep, indent1=2, indent2=3)
+        patient_str += f"{sep_2}]\n"
+        patient_str += f"{sep_1}{'}'}"
         return patient_str
