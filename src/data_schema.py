@@ -230,7 +230,7 @@ class Event(Entity):
             provenance_equal and roles_equal
         return event_equal
 
-    def __str__(self, sep="\t", indent1=4, indent2=5):
+    def __str__(self, sep="  ", indent1=4, indent2=5):
         sep_1 = f"{sep*indent1}"
         sep_2 = f"{sep*indent2}"
         event_str = f"{sep_1}Event {'{'}\n"
@@ -238,7 +238,10 @@ class Event(Entity):
         event_str += f"{sep_2}chartdate: {self.chartdate}\n"
         event_str += f"{sep_2}event_type: {self.event_type}\n"
         event_str += f"{sep_2}provenance: {self.provenance}\n"
-        event_str += f"{sep_2}roles: {self.roles}\n"
+        event_str += f"{sep_2}roles: {'{'}\n"
+        for role, role_value in self.roles.items():
+            event_str += f"{sep_2}{sep}{role}: {role_value}\n"
+        event_str += f"{sep_2}{'}'}\n"
         event_str += f"{sep_1}{'}'}\n"
         return event_str
 
@@ -269,7 +272,7 @@ class Visit(Entity):
         visit_equal = hadm_id_equal and provenance_equal and events_equal
         return visit_equal
 
-    def __str__(self, sep="\t", indent1=2, indent2=3):
+    def __str__(self, sep="  ", indent1=2, indent2=3):
         sep_1 = f"{sep*indent1}"
         sep_2 = f"{sep*indent2}"
         visit_str = f"{sep_1}Visit {'{'}\n"
@@ -280,7 +283,7 @@ class Visit(Entity):
         for event in self.events:
             visit_str += str(event)
         visit_str += f"{sep_2}]\n"
-        visit_str += f"{sep_1}{'}'}"
+        visit_str += f"{sep_1}{'}'}\n"
         return visit_str
 
 
@@ -346,7 +349,7 @@ class Patient(Entity):
             gender_equal and smoker_equal and visits_equal
         return patient_equal
 
-    def __str__(self, sep="\t", indent1=0, indent2=1):
+    def __str__(self, sep="  ", indent1=0, indent2=1):
         sep_1 = f"{sep * indent1}"
         sep_2 = f"{sep * indent2}"
         patient_str = f"{sep_1}Patient {'{'}\n"
@@ -359,7 +362,7 @@ class Patient(Entity):
         patient_str += f"{sep_2}visits: [\n"
 
         for visit in self.visits:
-            patient_str += str(visit, sep=sep, indent1=2, indent2=3)
+            patient_str += str(visit)
         patient_str += f"{sep_2}]\n"
         patient_str += f"{sep_1}{'}'}"
         return patient_str
