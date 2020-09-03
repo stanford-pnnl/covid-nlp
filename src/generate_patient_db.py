@@ -79,7 +79,7 @@ def export_patients(path: str, patients: Dict[str, Any],
     else:
         keys = sorted_keys
 
-    c = Counter()
+    c: Counter = Counter()
     c['num_keys'] = 0
     c['successful_dumps'] = 0
     c['failed_dumps'] = 0
@@ -120,8 +120,8 @@ def get_distinct_column_values(df, output_dir, keys, use_dask=False):
             continue
 
         output_path = f"{output_dir}/{key}.txt"
-        print(
-            f"\t{key}, dumping {len(distinct_column_values)} distinct values to {output_path}")
+        print(f"\t{key}, dumping {len(distinct_column_values)} distinct values"
+              f" to {output_path}")
         with open(output_path, 'w') as f:
             try:
                 distinct_column_values = sorted(distinct_column_values)
@@ -131,7 +131,8 @@ def get_distinct_column_values(df, output_dir, keys, use_dask=False):
                 f.write(f"{distinct_column_value}\n")
 
 
-def get_diagnosis_events_depression(events, event_cnt, date, concept_text, PT_text, patient_id):
+def get_diagnosis_events_depression(events, event_cnt, date, concept_text,
+                                    PT_text, patient_id):
     concept_text_depression = [
         'Anxious depression',
         'Bipolar depression',
@@ -173,15 +174,18 @@ def get_diagnosis_events_depression(events, event_cnt, date, concept_text, PT_te
         event_cnt['diagnosis'] += 1
         event_cnt['diagnosis_depression'] += 1
         depression_diagnosis_event = Event(
-            chartdate=date, provenance=date, event_id=event_cnt['id'], patient_id=patient_id)
+            chartdate=date, provenance=date, event_id=event_cnt['id'],
+            patient_id=patient_id)
         depression_diagnosis_event.diagnosis_role(
-            diagnosis_icd9='', diagnosis_name='Depression', diagnosis_long_name=diagnosis_long_name)
+            diagnosis_icd9='', diagnosis_name='Depression',
+            diagnosis_long_name=diagnosis_long_name)
         depression_diagnosis_event.roles['concept_text'] = concept_text
         depression_diagnosis_event.roles['PT_text'] = PT_text
         events[str(event_cnt['id'])] = depression_diagnosis_event
 
 
-def get_diagnosis_events_anxiety(events, event_cnt, date, concept_text, PT_text, patient_id):
+def get_diagnosis_events_anxiety(events, event_cnt, date, concept_text,
+                                 PT_text, patient_id):
     concept_text_anxiety = [
         'Adjustment disorder with anxiety',
         'Chronic anxiety',
@@ -221,9 +225,11 @@ def get_diagnosis_events_anxiety(events, event_cnt, date, concept_text, PT_text,
         event_cnt['diagnosis'] += 1
         event_cnt['diagnosis_anxiety'] += 1
         anxiety_diagnosis_event = Event(
-            chartdate=date, provenance=date, event_id=event_cnt['id'], patient_id=patient_id)
+            chartdate=date, provenance=date, event_id=event_cnt['id'],
+            patient_id=patient_id)
         anxiety_diagnosis_event.diagnosis_role(
-            diagnosis_icd9='', diagnosis_name='Anxiety', diagnosis_long_name=diagnosis_long_name)
+            diagnosis_icd9='', diagnosis_name='Anxiety',
+            diagnosis_long_name=diagnosis_long_name)
         anxiety_diagnosis_event.roles['concept_text'] = concept_text
         anxiety_diagnosis_event.roles['PT_text'] = PT_text
         events[str(event_cnt['id'])] = anxiety_diagnosis_event
@@ -231,7 +237,8 @@ def get_diagnosis_events_anxiety(events, event_cnt, date, concept_text, PT_text,
 # TODO match with ability to define meddra level matches
 
 
-def get_diagnosis_events_insomnia(events, event_cnt, date, concept_text, PT_text, patient_id):
+def get_diagnosis_events_insomnia(events, event_cnt, date, concept_text,
+                                  PT_text, patient_id):
     concept_text_insomnia = [
         'Behavorial insomnia of childhood'
         'Chronic insomnia',
@@ -266,15 +273,18 @@ def get_diagnosis_events_insomnia(events, event_cnt, date, concept_text, PT_text
         event_cnt['diagnosis'] += 1
         event_cnt['diagnosis_insomnia'] += 1
         insomnia_diagnosis_event = Event(
-            chartdate=date, provenance=date, event_id=event_cnt['id'], patient_id=patient_id)
+            chartdate=date, provenance=date, event_id=event_cnt['id'],
+            patient_id=patient_id)
         insomnia_diagnosis_event.diagnosis_role(
-            diagnosis_icd9='', diagnosis_name='Insomnia', diagnosis_long_name=diagnosis_long_name)
+            diagnosis_icd9='', diagnosis_name='Insomnia',
+            diagnosis_long_name=diagnosis_long_name)
         insomnia_diagnosis_event.roles['concept_text'] = concept_text
         insomnia_diagnosis_event.roles['PT_text'] = PT_text
         events[str(event_cnt['id'])] = insomnia_diagnosis_event
 
 
-def get_diagnosis_events_distress(events, event_cnt, date, concept_text, PT_text, patient_id):
+def get_diagnosis_events_distress(events, event_cnt, date, concept_text,
+                                  PT_text, patient_id):
     concept_text_distress = ['Emotional distress', 'emotional distress']
 
     PT_text_distress = ['Emotional distress']
@@ -294,9 +304,11 @@ def get_diagnosis_events_distress(events, event_cnt, date, concept_text, PT_text
         event_cnt['diagnosis'] += 1
         event_cnt['diagnosis_distress'] += 1
         distress_diagnosis_event = Event(
-            chartdate=date, provenance=date, event_id=event_cnt['id'], patient_id=patient_id)
+            chartdate=date, provenance=date, event_id=event_cnt['id'],
+            patient_id=patient_id)
         distress_diagnosis_event.diagnosis_role(
-            diagnosis_icd9='', diagnosis_name='Distress', diagnosis_long_name=diagnosis_long_name)
+            diagnosis_icd9='', diagnosis_name='Distress',
+            diagnosis_long_name=diagnosis_long_name)
         distress_diagnosis_event.roles['concept_text'] = concept_text
         distress_diagnosis_event.roles['PT_text'] = PT_text
         events[str(event_cnt['id'])] = distress_diagnosis_event
@@ -305,7 +317,7 @@ def get_diagnosis_events_distress(events, event_cnt, date, concept_text, PT_text
 def format_date(date_obj):
     try:
         date = date_obj.strftime('%Y-%m-%d')
-    except AttributeError as e:
+    except AttributeError:
         date = date_obj
     return date
 
@@ -367,9 +379,10 @@ def get_patient_visits(df):
     return patient_visits
 
 
-def create_visits(patient_visits: Dict[str, set]) -> Dict[str, Visit]:
+def create_visits(
+        patient_visits: Dict[str, set]) -> Dict[str, Dict[str, Visit]]:
     """Create visit objects."""
-    visits: Dict[str, Visit] = {}
+    visits: Dict[str, Dict[str, Visit]] = {}
     for patient_id, visit_set in patient_visits.items():
         if not visits.get(patient_id):
             visits[patient_id] = dict()
@@ -377,12 +390,13 @@ def create_visits(patient_visits: Dict[str, set]) -> Dict[str, Visit]:
             date_str = hadm_id
             date_object = datetime.strptime(date_str, "%Y-%m-%d")
             visits[patient_id][hadm_id] = Visit(
-                date_object, hadm_id=hadm_id, provenance=patient_id, patient_id=patient_id)
+                date_object, hadm_id=hadm_id, provenance=patient_id,
+                patient_id=patient_id)
     return visits
 
 
 def attach_events_to_visits(events: Dict[str, Event],
-                            visits: Dict[str, Visit]):
+                            visits: Dict[str, Dict[str, Visit]]):
     num_missing_keys = 0
     num_successful_keys = 0
 
@@ -390,7 +404,6 @@ def attach_events_to_visits(events: Dict[str, Event],
     for event in events.values():
         try:
             # FIXME, we dont have unique_visit_ids
-
             visits[event.patient_id][event.provenance].events.append(event)
             num_successful_keys += 1
         except KeyError:
@@ -421,7 +434,7 @@ def attach_visits_to_patients(visits, patients, patient_ids):
 
 
 def select_non_empty_patients(patient_ids: Set[str],
-                              visits: Dict[str, Visit]) -> Set[str]:
+                              visits: Dict[str, Dict[str, Visit]]) -> Set[int]:
     """Filter out patients IDs with no events"""
     print(
         f"Before filtering out empty patients: {len(patient_ids)} patient IDs")
@@ -430,7 +443,8 @@ def select_non_empty_patients(patient_ids: Set[str],
     for patient_id, patient_visits in visits.items():
         for visit_id, visit in patient_visits.items():
             if visit.events:
-                # TODO: should I get patient_id from visit or from key used to iter
+                # TODO: should I get patient_id from visit or
+                # from key used to iter
                 visit_patient_id = int(visit.patient_id)
                 non_empty_patient_ids.add(visit_patient_id)
 
@@ -440,7 +454,8 @@ def select_non_empty_patients(patient_ids: Set[str],
         pdb.set_trace()
 
     print(
-        f"After filtering out empty patients: {len(non_empty_patient_ids)} patient IDs")
+        f"After filtering out empty patients: {len(non_empty_patient_ids)} "
+        f"patient IDs")
 
     return non_empty_patient_ids
 
@@ -451,10 +466,10 @@ def main(args):
     distinct_column_values_dir = f"{output_dir}/distinct_column_values"
     covid_data_dir = f"/share/pi/stamang/covid/data"
     notes_2019_2020_dir = f"{covid_data_dir}/notes_20190901_20200701/labeled_extractions"
-    notes_2018_2019_dir = f"{covid_data_dir}/notes_20180901_20190701/extracted_notes"
+    #notes_2018_2019_dir = f"{covid_data_dir}/notes_20180901_20190701/extracted_notes"
 
     notes_2019_2020_paths = f"{notes_2019_2020_dir}/all_POS_batch000_099.parquet"
-    notes_2018_2019_paths = f"{notes_2018_2019_dir}/extracted_notes_batch*.parquet"
+    #notes_2018_2019_paths = f"{notes_2018_2019_dir}/extracted_notes_batch*.parquet"
 
     # Generate patient dump path
     patients_dump_path = f"{args.output_dir}/patients"
@@ -470,10 +485,7 @@ def main(args):
 
     columns = sorted(meddra_extractions.columns.tolist())
     print(f"Dataframe column names:\n\t{columns}")
-    # Dump distinct column values for debug
-    column_keys = \
-        ['note_title', 'concept_text', 'polarity', 'present',
-         'PT_text', 'HLT_text', 'HLGT_text', 'SOC_text']
+
     # Make sure output directories are created
     try:
         os.makedirs(distinct_column_values_dir)

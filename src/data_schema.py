@@ -1,7 +1,6 @@
 import logging
 import math
 import os
-import pickle
 import re
 import sys
 from datetime import datetime
@@ -187,7 +186,8 @@ class Event(Entity):
         self.roles['indication'] = indication
         self.roles['medication'] = medication
 
-    def diagnosis_role(self, diagnosis_icd9: str, diagnosis_name: str, diagnosis_long_name: str):
+    def diagnosis_role(self, diagnosis_icd9: str, diagnosis_name: str,
+                       diagnosis_long_name: str):
         """Diagnosis event helper."""
         self.event_type = "DiagnosisEvent"
         self.roles['diagnosis_icd9'] = diagnosis_icd9
@@ -300,7 +300,8 @@ class Patient(Entity):
         self.smoker: bool = patient_smoker
         # TODO, make sure visits are unique
         self.visits: List[Visit] = []
-        # TODO, think about how to incorprate item not associated with Visits or Events
+        # TODO, think about how to incorprate item not associated with Visits
+        # or Events
         # e.g. prescription management, maintenance items
 
     # FIXME
