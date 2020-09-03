@@ -247,11 +247,11 @@ class Visit(Entity):
     """Visit class."""
 
     def __init__(self, date, visit_embedding=None, hadm_id: str = "",
-            provenance: str = "", patient_id: str = ""):
+                 provenance: str = "", patient_id: str = ""):
         """Initialize Visit."""
         Entity.__init__(self, visit_embedding, hadm_id, ETYPE_VISIT)
         self.hadm_id: str = hadm_id
-        self.date  = date
+        self.date = date
         # refers to parent Patient.patient_id
         self.provenance: str = provenance
         self.patient_id: str = patient_id
@@ -300,10 +300,10 @@ class Patient(Entity):
         self.smoker: bool = patient_smoker
         # TODO, make sure visits are unique
         self.visits: List[Visit] = []
-        # TODO, think about how to incorprate item not associated with Visits or Events 
+        # TODO, think about how to incorprate item not associated with Visits or Events
         # e.g. prescription management, maintenance items
 
-    #FIXME
+    # FIXME
     def update(self, patient_attributes):
         if patient_attributes.get('age'):
             self.age = patient_attributes['age']
