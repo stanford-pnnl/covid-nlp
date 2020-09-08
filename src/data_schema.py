@@ -38,7 +38,7 @@ class EntityDecoder(JSONDecoder):
         """Decode a Patient obj."""
         p = Patient(patient_embedding=obj['entity_embedding'],
                     patient_id=obj['entity_id'],
-                    patient_adult=obj['adult']
+                    patient_adult=obj['adult'],
                     patient_age=obj['age'],
                     patient_dob=obj['dob'],
                     patient_ethnicity=obj['ethnicity'],
