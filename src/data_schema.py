@@ -43,7 +43,7 @@ class EntityDecoder(JSONDecoder):
                     patient_dob=obj['dob'],
                     patient_ethnicity=obj['ethnicity'],
                     patient_gender=obj['gender'],
-                    patient_race=obj['race']
+                    patient_race=obj['race'],
                     patient_smoker=obj['smoker'])
         p.visits.extend(obj['visits'])
         return p
