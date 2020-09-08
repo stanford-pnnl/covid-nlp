@@ -38,10 +38,12 @@ class EntityDecoder(JSONDecoder):
         """Decode a Patient obj."""
         p = Patient(patient_embedding=obj['entity_embedding'],
                     patient_id=obj['entity_id'],
+                    patient_adult=obj['adult']
                     patient_age=obj['age'],
                     patient_dob=obj['dob'],
+                    patient_ethnicity=obj['ethnicity'],
                     patient_gender=obj['gender'],
-                    patient_adult=obj['adult'],
+                    patient_race=obj['race']
                     patient_smoker=obj['smoker'])
         p.visits.extend(obj['visits'])
         return p
@@ -100,10 +102,12 @@ class EntityEncoder(JSONEncoder):
             'entity_type': obj.entity_type,
             'entity_id': obj.entity_id,
             'entity_embedding': obj.entity_embedding,
+            'adult': obj.adult,
             'age': obj.age,
             'dob': obj.dob,
+            'ethnicity': obj.ethnicity,
             'gender': obj.gender,
-            'adult': obj.adult,
+            'race': obj.race,
             'smoker': obj.smoker,
             'visits': [self.default(v) for v in obj.visits]
         }
@@ -368,10 +372,12 @@ class Patient(Entity):
         sep_2 = f"{sep * indent2}"
         patient_str = f"{sep_1}Patient {'{'}\n"
         patient_str += f"{sep_2}entity_id: {self.entity_id}\n"
+        patient_str += f"{sep_2}adult: {self.adult}\n"
         patient_str += f"{sep_2}age: {self.age}\n"
         patient_str += f"{sep_2}dob: {self.dob}\n"
+        patient_str += f"{sep_2}ethnicity: {self.ethnicity}\n"
         patient_str += f"{sep_2}gender: {self.gender}\n"
-        patient_str += f"{sep_2}adult: {self.adult}\n"
+        patient_str += f"{sep_2}race: {self.race}"
         patient_str += f"{sep_2}smoker: {self.smoker}\n"
         patient_str += f"{sep_2}visits: [\n"
 
