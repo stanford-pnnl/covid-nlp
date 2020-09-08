@@ -290,17 +290,31 @@ class Visit(Entity):
 class Patient(Entity):
     """Patient/Pt/Subject class."""
 
-    def __init__(self, patient_embedding=None, patient_id: str = "",
-                 patient_age: Any = None, patient_dob: str = "",
-                 patient_gender: str = "", patient_adult: bool = False,
+    def __init__(self,
+                 patient_embedding=None,
+                 patient_id: str = "",
+                 patient_age: Any = None,
+                 patient_dob: str = "",
+                 patient_ethnicity: str = "",
+                 patient_gender: str = "",
+                 patient_race: str = "",
+                 patient_adult: bool = False,
                  patient_smoker: bool = False):
         """Initialize Patient."""
         Entity.__init__(self, patient_embedding, patient_id, ETYPE_PATIENT)
+        self.adult: bool = patient_adult
         self.age: Any = patient_age
         self.dob: str = patient_dob
+        self.ethnicity: str = patient_ethnicity
         self.gender: str = patient_gender
-        self.adult: bool = patient_adult
+        self.race: str = patient_race
         self.smoker: bool = patient_smoker
+
+        # Not sure if this is the smartest way to store this
+        #self.year_of_birth: int = patient_year_of_birth
+        #self.month_of_birth: int = patient_month_of_birth
+        #self.day_of_birth: int = patient_day_of_birth
+
         # TODO, make sure visits are unique
         self.visits: List[Visit] = []
         # TODO, think about how to incorprate item not associated with Visits
