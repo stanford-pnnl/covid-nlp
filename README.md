@@ -30,6 +30,12 @@ Features:
 		1. Count matches per entity level (patient, visit, event)
 		2. Patient aggregation by time ( Can match year, month, and day values)
 
+Environment:
+	- To create an identical env
+		* conda create --name myenv --file spec-file.txt
+	- To install listed packages into an existing environment
+		* conda install --name myenv --file spec-file.txt
+
 TODO:
 
 	1. Read in patient demographic information
