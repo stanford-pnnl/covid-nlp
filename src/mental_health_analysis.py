@@ -65,9 +65,6 @@ def mental_health_co_morbidities(patients, search_terms):
 
 
 def main(args):
-    data_dir = "/home/colbyham/covid-nlp/output"
-    patients_db_path = f"{data_dir}/patients_20200831-050502.jsonl"
-
     # Create and load an instance of PatientDB
     patients = PatientDB(name='all')
     patients.load(args.patient_db_path)
