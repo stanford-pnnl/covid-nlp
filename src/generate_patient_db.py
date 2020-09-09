@@ -36,13 +36,28 @@ def get_df(path, use_dask):
     return df
 
 
-def get_patient_ids(df, use_dask=False):
+def get_person_ids(df, use_dask=False):
+    unique_person_ids = df.person_id.unique()
     if use_dask:
-        unique_patient_ids = df.patid.unique().compute()
-        nunique_patient_ids = df.patid.nunique().compute()
-    else:
-        unique_patient_ids = df.patid.unique()
-        nunique_patient_ids = df.patid.unique()
+        unique_person_ids = unique_person_ids.compute()
+
+    nunique_person_ids = df.person_id.nunique()
+    if use_dask:
+        nunique_person_ids = nunique_person_ids.compute()
+
+    print(f"Found {nunique_person_ids} person IDs")
+    return unique_person_ids
+
+
+def get_patient_ids(df, use_dask=False):
+    unique_patient_ids = df.patid.unique()
+    if use_dask:
+        unique_patient_ids = unique_patient_ids.compute()
+
+    nunique_patient_ids = df.patid.nunique()
+    if use_dask:
+        nunique_patient_ids = nunique_patient_ids.compute()
+
     print(f"Found {nunique_patient_ids} patient IDs")
     return unique_patient_ids
 
@@ -460,6 +475,46 @@ def select_non_empty_patients(patient_ids: Set[str],
     return non_empty_patient_ids
 
 
+def get_all_patient_ids(demographics, extractions, use_dask):
+    all_patient_ids = set()
+
+    person_ids = get_person_ids(demographics, args.use_dask)
+    person_ids = set(person_ids)
+    print(f"len(person_ids): {len(person_ids)}")
+    all_patient_ids.update(person_ids)
+
+    # Get distinct Patient ID values from dataframe
+    patient_ids = get_patient_ids(extractions, args.use_dask)
+    patient_ids = set(patient_ids)
+    print(f"len(patient_ids): {len(patient_ids)}")
+    all_patient_ids.update(patient_ids)
+   
+    print(f"len(all_patient_ids): {len(all_patient_ids)}")
+    return all_patient_ids
+
+
+#FIXME
+def add_patient_demographic_info(patients, demographics, use_dask):
+    for row in demographics.itertuples():
+        person_id = row.person_id
+        person_id_key = str(person_id)
+        # Does this person exist in the patient DB already?
+        if not patients.get(person_id_key):
+            #import pdb;pdb.set_trace()
+            print(f"Not finding {person_id} in patients dict")
+            continue
+        patient = patients[person_id_key]
+        patient.year_of_birth = row.year_of_birth
+        patient.month_of_birth = row.month_of_birth
+        patient.day_of_birth = row.day_of_birth
+        patient.birth_datetime = row.birth_DATETIME
+        patient.gender = row.gender
+        patient.race = row.race
+        patient.ethnicity = row.ethnicity
+
+
+
+
 def main(args):
     # Setup variables
     output_dir = 'output'
@@ -481,27 +536,23 @@ def main(args):
     print(f"path_pattern: {path_pattern}")
 
     print(f"use_dask: {args.use_dask}")
+
+    # Get demographics dataframe
+    demographics_path = f"{covid_data_dir}/demo/demo_all_pts.parquet"
+    demographics = get_df(demographics_path, args.use_dask)
+
+    import pdb;pdb.set_trace()
+
+    # Get meddra extractions
     meddra_extractions = get_df(path_pattern, args.use_dask)
 
     columns = sorted(meddra_extractions.columns.tolist())
     print(f"Dataframe column names:\n\t{columns}")
 
-    # Make sure output directories are created
-    try:
-        os.makedirs(distinct_column_values_dir)
-    except OSError:
-        pass
+    
+    patient_ids = get_all_patient_ids(demographics, meddra_extractions, args.use_dask)
+    import pdb;pdb.set_trace()
 
-    # FIXME: not currently working
-    if args.sample_column_values:
-        get_distinct_column_values(
-            meddra_extractions, distinct_column_values_dir, columns)
-
-    # Get distinct Patient ID values from dataframe
-    patient_ids = get_patient_ids(meddra_extractions, args.use_dask)
-    print(f"len(patient_ids): {len(patient_ids)}")
-    #patient_ids = [str(x) for x in patient_ids]
-    #import pdb;pdb.set_trace()
 
     events = get_events(meddra_extractions)
     if not events:
@@ -524,6 +575,9 @@ def main(args):
 
     # Generate patients from IDs
     patients = generate_patients_from_ids(patient_ids)
+
+    # Attach demographic information to patients
+    add_patient_demographic_info(patients, demographics, args.use_dask)
 
     # Attach visits to patients
     attach_visits_to_patients(visits, patients, patient_ids)
