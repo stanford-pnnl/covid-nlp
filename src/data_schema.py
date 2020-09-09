@@ -3,7 +3,7 @@ import math
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from json import JSONDecoder, JSONEncoder
 from typing import Any, Dict, List, Set, Tuple
 
@@ -36,11 +36,12 @@ class EntityDecoder(JSONDecoder):
     @staticmethod
     def decode_patient(obj):
         """Decode a Patient obj."""
+        date_of_birth_obj = date.fromisoformat(obj['date_of_birth'])
         p = Patient(patient_embedding=obj['entity_embedding'],
                     patient_id=obj['entity_id'],
                     patient_adult=obj['adult'],
                     patient_age=obj['age'],
-                    patient_dob=obj['dob'],
+                    patient_date_of_birth=date_of_birth_obj,
                     patient_ethnicity=obj['ethnicity'],
                     patient_gender=obj['gender'],
                     patient_race=obj['race'],
@@ -51,7 +52,7 @@ class EntityDecoder(JSONDecoder):
     @staticmethod
     def decode_visit(obj):
         """Decode a Visit obj."""
-        date_obj = datetime.strptime(obj['date'], '%Y-%m-%d')
+        date_obj = datetime.fromisoformat(obj['date'])
         v = Visit(date=date_obj,
                   visit_embedding=obj['entity_embedding'],
                   hadm_id=obj['hadm_id'],
@@ -104,7 +105,7 @@ class EntityEncoder(JSONEncoder):
             'entity_embedding': obj.entity_embedding,
             'adult': obj.adult,
             'age': obj.age,
-            'dob': obj.dob,
+            'date_of_birth': obj.date_of_birth.isoformat(),
             'ethnicity': obj.ethnicity,
             'gender': obj.gender,
             'race': obj.race,
@@ -120,7 +121,7 @@ class EntityEncoder(JSONEncoder):
             'entity_id': obj.entity_id,
             'entity_embedding': obj.entity_embedding,
             'hadm_id': obj.hadm_id,
-            'date': obj.date.strftime("%Y-%m-%d"),
+            'date': obj.date.isoformat(),
             'provenance': obj.provenance,
             'events': [self.default(e) for e in obj.events]
         }
@@ -169,6 +170,7 @@ class Event(Entity):
                  provenance: str = "", patient_id: str = ""):
         """Initialize Event."""
         Entity.__init__(self, event_embedding, event_id, ETYPE_EVENT)
+        # TODO: make chartdate a date object
         self.chartdate: str = chartdate
         self.event_type: str = event_type
         self.provenance: str = provenance  # refers to parent Visit.hadm_id
@@ -259,12 +261,14 @@ class Visit(Entity):
         """Initialize Visit."""
         Entity.__init__(self, visit_embedding, hadm_id, ETYPE_VISIT)
         self.hadm_id: str = hadm_id
+        # TODO: make sure date is a datetime obj
         self.date = date
         # refers to parent Patient.patient_id
         self.provenance: str = provenance
         self.patient_id: str = patient_id
         self.events: List[Event] = []
 
+    # FIXME, broken
     def __eq__(self, other):
         """Test if Visit objects are equal."""
         if not isinstance(other, Visit):
@@ -299,7 +303,7 @@ class Patient(Entity):
                  patient_embedding=None,
                  patient_id: str = "",
                  patient_age: Any = None,
-                 patient_dob: str = "",
+                 patient_date_of_birth: date = None,
                  patient_ethnicity: str = "",
                  patient_gender: str = "",
                  patient_race: str = "",
@@ -309,7 +313,7 @@ class Patient(Entity):
         Entity.__init__(self, patient_embedding, patient_id, ETYPE_PATIENT)
         self.adult: bool = patient_adult
         self.age: Any = patient_age
-        self.dob: str = patient_dob
+        self.date_of_birth: date = patient_date_of_birth
         self.ethnicity: str = patient_ethnicity
         self.gender: str = patient_gender
         self.race: str = patient_race
@@ -330,28 +334,6 @@ class Patient(Entity):
         # or Events
         # e.g. prescription management, maintenance items
 
-    # FIXME
-    def update(self, patient_attributes):
-        if patient_attributes.get('age'):
-            self.age = patient_attributes['age']
-            logging.debug("\tPatient age updated")
-
-        if patient_attributes.get('dob'):
-            self.dob = patient_attributes['dob']
-            logging.debug("\tPatient dob updated")
-
-        if patient_attributes.get('gender'):
-            self.gender = patient_attributes['gender']
-            logging.debug("\tPatient gender updated")
-
-        if patient_attributes.get('adult'):
-            self.adult = patient_attributes['adult']
-            logging.debug("\tPatient adult updated")
-
-        if patient_attributes.get('smoker'):
-            self.smoker = patient_attributes['smoker']
-            logging.debug("\tPatient smoker updated")
-
     def num_visits(self):
         return len(self.visits)
 
@@ -362,13 +344,13 @@ class Patient(Entity):
             return NotImplemented
 
         age_equal = self.age == other.age
-        dob_equal = self.dob == other.dob
+        date_of_birth_equal = self.date_of_birth == other.date_of_birth
         gender_equal = self.gender == other.gender
         adult_equal = self.adult == other.adult
         smoker_equal = self.smoker == other.smoker
         visits_equal = sorted(self.visits) == sorted(other.visits)
 
-        patient_equal = age_equal and adult_equal and dob_equal and \
+        patient_equal = age_equal and adult_equal and date_of_birth_equal and \
             gender_equal and smoker_equal and visits_equal
         return patient_equal
 
@@ -379,7 +361,7 @@ class Patient(Entity):
         patient_str += f"{sep_2}entity_id: {self.entity_id}\n"
         patient_str += f"{sep_2}adult: {self.adult}\n"
         patient_str += f"{sep_2}age: {self.age}\n"
-        patient_str += f"{sep_2}dob: {self.dob}\n"
+        patient_str += f"{sep_2}date_of_birth: {self.date_of_birth}\n"
         patient_str += f"{sep_2}ethnicity: {self.ethnicity}\n"
         patient_str += f"{sep_2}gender: {self.gender}\n"
         patient_str += f"{sep_2}race: {self.race}"
