@@ -504,10 +504,9 @@ def add_patient_demographic_info(patients, demographics, use_dask):
             print(f"Not finding {person_id} in patients dict")
             continue
         patient = patients[person_id_key]
-        patient.year_of_birth = row.year_of_birth
-        patient.month_of_birth = row.month_of_birth
-        patient.day_of_birth = row.day_of_birth
-        patient.birth_datetime = row.birth_DATETIME
+        patient.date_of_birth = date(row.year_of_birth,
+                                     row.month_of_birth,
+                                     row.day_of_birth)
         patient.gender = row.gender
         patient.race = row.race
         patient.ethnicity = row.ethnicity
