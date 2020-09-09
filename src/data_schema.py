@@ -220,6 +220,7 @@ class Event(Entity):
         # vital_outcome = ("ALIVE" | "DEAD")
         self.roles['vital_outcome'] = vital_outcome
 
+    # broken FIXME
     def __eq__(self, other):
         """Test if Event objects are equal."""
         if not isinstance(other, Event):
@@ -313,6 +314,10 @@ class Patient(Entity):
         self.gender: str = patient_gender
         self.race: str = patient_race
         self.smoker: bool = patient_smoker
+        self.year_of_birth: int = -1
+        self.month_of_birth: int = -1
+        self.day_of_birth: int = -1
+        self.birth_datetime = None
 
         # Not sure if this is the smartest way to store this
         #self.year_of_birth: int = patient_year_of_birth
