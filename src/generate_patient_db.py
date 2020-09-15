@@ -478,13 +478,13 @@ def select_non_empty_patients(patient_ids: Set[str],
 def get_all_patient_ids(demographics, extractions, use_dask):
     all_patient_ids = set()
 
-    person_ids = get_person_ids(demographics, args.use_dask)
+    person_ids = get_person_ids(demographics, use_dask)
     person_ids = set(person_ids)
     print(f"len(person_ids): {len(person_ids)}")
     all_patient_ids.update(person_ids)
 
     # Get distinct Patient ID values from dataframe
-    patient_ids = get_patient_ids(extractions, args.use_dask)
+    patient_ids = get_patient_ids(extractions, use_dask)
     patient_ids = set(patient_ids)
     print(f"len(patient_ids): {len(patient_ids)}")
     all_patient_ids.update(patient_ids)
