@@ -113,14 +113,21 @@ class PatientDB():
             self.add_patient(patient)
 
     def add_demographic_info(self, demographics, use_dask):
+        print("Adding demographic info")
+        c = Counter()
+        c['patients_found'] = 0
+        c['patients_not_found'] = 0
         for row in demographics.itertuples():
             person_id = row.person_id
             person_id_key = str(person_id)
             # Does this person exist in the patient DB already?
-            if not self.patients.get(person_id):
+            if not self.patients.get(person_id_key):
                 #import pdb;pdb.set_trace()
-                print(f"Not finding {person_id} in patients dict")
+                #print(f"Not finding {person_id_key} in patients dict")
+                c['patients_not_found'] += 1
                 continue
+            
+            c['patients_found'] += 1
             patient = self.patients[person_id_key]
             patient.date_of_birth = date(row.year_of_birth,
                                      row.month_of_birth,
@@ -128,6 +135,7 @@ class PatientDB():
             patient.gender = row.gender
             patient.race = row.race
             patient.ethnicity = row.ethnicity
+        print(f"{c}")
 
     def get_stats(self):
         total_num_visits = 0
