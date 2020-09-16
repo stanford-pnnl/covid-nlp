@@ -101,8 +101,7 @@ def get_distinct_column_values(df, output_dir, keys, use_dask=False):
                 f.write(f"{distinct_column_value}\n")
 
 
-def get_diagnosis_events_depression(events, event_cnt, date, concept_text,
-                                    PT_text, patient_id):
+def get_diagnosis_events_depression(events, event_cnt, row, date, patient_id):
     concept_text_depression = [
         'Anxious depression',
         'Bipolar depression',
@@ -128,6 +127,8 @@ def get_diagnosis_events_depression(events, event_cnt, date, concept_text,
         'Major depression',
         'Perinatal depression',
         'Post stroke depression']
+    PT_text = row.PT_text
+    concept_text = row.concept_text
 
     # Check for 'depression'
     depression_diagnosis_event_found = False
@@ -149,13 +150,12 @@ def get_diagnosis_events_depression(events, event_cnt, date, concept_text,
         depression_diagnosis_event.diagnosis_role(
             diagnosis_icd9='', diagnosis_name='Depression',
             diagnosis_long_name=diagnosis_long_name)
-        depression_diagnosis_event.roles['concept_text'] = concept_text
-        depression_diagnosis_event.roles['PT_text'] = PT_text
+        add_meddra_roles(depression_diagnosis_event, row)
         events[str(event_cnt['id'])] = depression_diagnosis_event
 
+    return depression_diagnosis_event_found
 
-def get_diagnosis_events_anxiety(events, event_cnt, date, concept_text,
-                                 PT_text, patient_id):
+def get_diagnosis_events_anxiety(events, event_cnt, row, date, patient_id):
     concept_text_anxiety = [
         'Adjustment disorder with anxiety',
         'Chronic anxiety',
@@ -180,6 +180,9 @@ def get_diagnosis_events_anxiety(events, event_cnt, date, concept_text,
         'Separation anxiety disorder',
         'Social anxiety disorder']
 
+    PT_text = row.PT_text
+    concept_text = row.concept_text
+
     # Check for anxiety
     anxiety_diagnosis_event_found = False
     if PT_text in PT_text_anxiety:
@@ -200,15 +203,13 @@ def get_diagnosis_events_anxiety(events, event_cnt, date, concept_text,
         anxiety_diagnosis_event.diagnosis_role(
             diagnosis_icd9='', diagnosis_name='Anxiety',
             diagnosis_long_name=diagnosis_long_name)
-        anxiety_diagnosis_event.roles['concept_text'] = concept_text
-        anxiety_diagnosis_event.roles['PT_text'] = PT_text
+        add_meddra_roles(anxiety_diagnosis_event, row)
         events[str(event_cnt['id'])] = anxiety_diagnosis_event
-
+    return anxiety_diagnosis_event_found
 # TODO match with ability to define meddra level matches
 
 
-def get_diagnosis_events_insomnia(events, event_cnt, date, concept_text,
-                                  PT_text, patient_id):
+def get_diagnosis_events_insomnia(events, event_cnt, row, date, patient_id):
     concept_text_insomnia = [
         'Behavorial insomnia of childhood'
         'Chronic insomnia',
@@ -227,6 +228,8 @@ def get_diagnosis_events_insomnia(events, event_cnt, date, concept_text,
         'Terminal insomnia']
 
     #Match(SOC="*", HLGT="cardiac_valve_disorders", HLT="", PT="")
+    PT_text = row.PT_text
+    concept_text = row.concept_text
 
     # Check for insomnia
     insomnia_diagnosis_event_found = False
@@ -248,16 +251,16 @@ def get_diagnosis_events_insomnia(events, event_cnt, date, concept_text,
         insomnia_diagnosis_event.diagnosis_role(
             diagnosis_icd9='', diagnosis_name='Insomnia',
             diagnosis_long_name=diagnosis_long_name)
-        insomnia_diagnosis_event.roles['concept_text'] = concept_text
-        insomnia_diagnosis_event.roles['PT_text'] = PT_text
+        add_meddra_roles(insomnia_diagnosis_event, row)
         events[str(event_cnt['id'])] = insomnia_diagnosis_event
+    return insomnia_diagnosis_event_found
 
-
-def get_diagnosis_events_distress(events, event_cnt, date, concept_text,
-                                  PT_text, patient_id):
+def get_diagnosis_events_distress(events, event_cnt, row, date, patient_id):
     concept_text_distress = ['Emotional distress', 'emotional distress']
 
     PT_text_distress = ['Emotional distress']
+    PT_text = row.PT_text
+    concept_text = row.concept_text
 
     # Check for distress
     distress_diagnosis_event_found = False
@@ -279,10 +282,9 @@ def get_diagnosis_events_distress(events, event_cnt, date, concept_text,
         distress_diagnosis_event.diagnosis_role(
             diagnosis_icd9='', diagnosis_name='Distress',
             diagnosis_long_name=diagnosis_long_name)
-        distress_diagnosis_event.roles['concept_text'] = concept_text
-        distress_diagnosis_event.roles['PT_text'] = PT_text
+        add_meddra_roles(distress_diagnosis_event, row)
         events[str(event_cnt['id'])] = distress_diagnosis_event
-
+    return distress_diagnosis_event_found
 
 def format_date(date_obj):
     try:
@@ -292,33 +294,116 @@ def format_date(date_obj):
     return date
 
 
+def add_meddra_roles(event, row):
+    # Meddra levels
+    event.roles['SOC'] = row.SOC
+    event.roles['HLGT'] = row.HLGT
+    event.roles['HLT'] = row.HLT
+    event.roles['PT'] = row.PT
+
+    # Meddra CUI levels
+    event.roles['SOC_CUI'] = row.SOC_CUI
+    event.roles['HLGT_CUI'] = row.HLGT_CUI
+    event.roles['HLT_CUI'] = row.HLT_CUI
+    event.roles['PT_CUI'] = row.PT_CUI
+    event.roles['extracted_CUI'] = row.extracted_CUI
+
+    # Meddra text levels
+    event.roles['SOC_text'] = row.SOC_text
+    event.roles['HLGT_text'] = row.HLGT_text
+    event.roles['HLT_text'] = row.HLT_text
+    event.roles['PT_text'] = row.PT_text
+    event.roles['concept_text'] = row.concept_text
+
+    # Everything else (not adding date twice)
+    event.roles['PExperiencer'] = row.PExperiencer
+    event.roles['medID'] = row.medID
+    event.roles['note_id'] = row.note_id
+    event.roles['note_title'] = row.note_title
+    event.roles['polarity'] = row.polarity
+    event.roles['pos'] = row.pos
+    event.roles['present'] = row.present
+    event.roles['ttype'] = row.ttype
+
+def count_column_values(row, counter):
+    counter['HLGT'][row.HLGT] += 1
+    counter['HLGT_CUI'][row.HLGT_CUI] += 1
+    counter['HLGT_text'][row.HLGT_text] += 1
+    counter['HLT'][row.HLT] += 1
+    counter['HLT_CUI'][row.HLT_CUI] += 1
+    counter['HLT_text'][row.HLT_text] += 1
+    counter['PExperiencer'][row.PExperiencer] += 1
+    counter['PT'][row.PT] += 1
+    counter['PT_CUI'][row.PT_CUI] += 1
+    counter['PT_text'][row.PT_text] += 1
+    counter['SOC'][row.SOC] += 1
+    counter['SOC_CUI'][row.SOC_CUI] += 1
+    counter['SOC_text'][row.SOC_text] += 1
+    counter['concept_text'][row.concept_text] += 1
+    counter['date'][format_date(row.date)] += 1
+    counter['extracted_CUI'][row.extracted_CUI] += 1
+    counter['medID'][row.medID] += 1
+    counter['note_id'][row.note_id] += 1
+    counter['note_title'][row.note_title] += 1
+    counter['patid'][row.patid] += 1
+    counter['polarity'][row.polarity] += 1
+    counter['pos'][row.pos] += 1
+    counter['present'][row.present] += 1
+    counter['ttype'][row.ttype] += 1
+
 def get_diagnosis_events(events, event_cnt, df):
     columns = dict()
-    for column in df.columns.tolist():
+    column_names = df.columns.tolist()
+    for column in column_names:
         columns[column] = Counter()
     print(df.head())
 
+    # See if you can find a generalizable way to iterate without using itterrows
+    # temporarily using to satisfy unkown columns addition to roles
+    
+    #FIXME, only look at 1000000 rows
+    row_seen_max = 1000000
+    row_seen = 0
     for row in df.itertuples():
+        row_seen += 1
+        if row_seen % 10000 == 0:
+            print(f"Row: {row_seen}")
+        if row_seen > row_seen_max:
+            break
         #import pdb;pdb.set_trace()
         date = format_date(row.date)
         patient_id = str(row.patid)
-        HLGT_text = row.HLGT_text
-        PT_text = row.PT_text
-        concept_text = row.concept_text
-
-        columns['HLGT_text'][HLGT_text] += 1
-        columns['PT_text'][PT_text] += 1
-        columns['concept_text'][concept_text] += 1
+        
+        # Meddra column value counters
+        #count_column_values(row, columns)
 
         # Check for different types of diagnosis events
-        get_diagnosis_events_depression(
-            events, event_cnt, date, concept_text, PT_text, patient_id)
-        get_diagnosis_events_anxiety(
-            events, event_cnt, date, concept_text, PT_text, patient_id)
-        get_diagnosis_events_insomnia(
-            events, event_cnt, date, concept_text, PT_text, patient_id)
-        get_diagnosis_events_distress(
-            events, event_cnt, date, concept_text, PT_text, patient_id)
+        found_depression = get_diagnosis_events_depression(events, event_cnt, row, date, patient_id)
+        found_anxiety = get_diagnosis_events_anxiety(events, event_cnt, row, date, patient_id)
+        found_insomnia = get_diagnosis_events_insomnia(events, event_cnt, row, date, patient_id)
+        found_distress = get_diagnosis_events_distress(events, event_cnt, row, date, patient_id)
+
+        # If we don't find a mental health symptom assume we have found
+        # a diagnosis event/symptom without match
+        found_any_events = found_depression or found_anxiety or found_insomnia or found_distress
+        #FIXME
+        #found_any_events = False
+        if found_any_events:
+            continue
+        # Add symptom event
+        event_cnt['id'] += 1
+        event_cnt['diagnosis'] += 1
+        event_cnt['diagnosis_symptom'] += 1
+        diagnosis_event = Event(chartdate=date, provenance=date, event_id=event_cnt['id'], patient_id=patient_id)
+        diagnosis_name = row.concept_text
+        diagnosis_long_name = row.concept_text
+        diagnosis_event.diagnosis_role(diagnosis_icd9='', diagnosis_name=diagnosis_name, diagnosis_long_name=diagnosis_long_name)
+
+        # Add meddra items
+        add_meddra_roles(diagnosis_event, row)
+
+
+        events[str(event_cnt['id'])] = diagnosis_event
 
     #print(f"columns: {columns}")
     #print("Top 10 diagnosis ")
@@ -326,12 +411,14 @@ def get_diagnosis_events(events, event_cnt, df):
 
 
 def get_events(df):
+    print("Getting events...")
     event_cnt = Counter()
     events = {}
     # Diagnosis Events
     get_diagnosis_events(events, event_cnt, df)
     print(f"Found {event_cnt['diagnosis']} diagnosis events")
     print(f"Found {event_cnt['id']} total events")
+    print(f"{event_cnt}")
     return events
 
 

@@ -6,7 +6,8 @@ import argparse
 
 def mental_health_co_morbidities(patients, search_terms):
     print("Running mental health co-morbidities checks...")
-    patients_matched = PatientDB()
+    patients_matched = PatientDB(name='patients_matched')
+    import pdb;pdb.set_trace()
     matches = set()
     print(f"search_terms: {search_terms}")
     for term in search_terms:
@@ -16,8 +17,10 @@ def mental_health_co_morbidities(patients, search_terms):
                         event_keys=['diagnosis_name'],
                         event_types=['DiagnosisEvent'])
         patients_matched.merge_patients(term_patients_matched)
-        print(f"\tterm: {term}, len(term_matches): {len(term_matches)}")
-    
+        print(f"\tterm: {term}, len(term_matches): {len(term_matches)}, len(mathes): {len(matches)}")
+        print(f"\tlen(term_patients_matched.patients.keys()): {len(term_patients_matched.patients.keys())}")
+        print(f"\tlen(patients_matched.patients.keys()): {len(patients_matched.patients.keys())}")
+
         matches = matches.union(term_matches)
     print(f"{len(patients_matched.patients)} patients matched")
 
@@ -50,10 +53,12 @@ def mental_health_co_morbidities(patients, search_terms):
     # Report top-k diagnosis codes
     k, top_k = get_top_k(diagnosis_event_counters, diagnosis_event_entity_levels, diagnosis_event_roles, k=10)
     for entity_level in top_k:
-        print(f"Top {k} diagnosis codes per {entity_level}:")
+        print(f"Top {k} diagnosis roles per {entity_level}:")
         #{top_k[entity_level]}")
-        for key, values in top_k[entity_level].items():
-            print(f"\tkey: {key}\n\t\t{values}")
+        for key in sorted(top_k[entity_level]):
+            values = top_k[entity_level][key]
+            if values:
+                print(f"\tkey: {key}\n\t\t{values}")
         print()
     import pdb;pdb.set_trace()
 

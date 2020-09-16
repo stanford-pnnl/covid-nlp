@@ -8,9 +8,12 @@ from dateutil import rrule
 class PatientDB():
     "Database composed of patient->visit->event relationships"
     
-    def __init__(self, name="", patients=dict()):
+    def __init__(self, name=""):
         self.name = name
-        self.patients = patients
+        self.patients = dict()
+
+    def reproduce(self, name=''):
+        return PatientDB(name=name)
 
     def load(self, path):
         with open(path, 'r') as f:
@@ -59,7 +62,7 @@ class PatientDB():
         self.patients[str(patient_id)] = patient
 
     def match_patients(self, term, event_keys='', event_types=['']):
-        matched_patients = PatientDB()
+        matched_patients = self.reproduce()
         matches = set()
         matched_patient_ids = set()
         matched_visit_ids = set()
@@ -83,7 +86,10 @@ class PatientDB():
                             matched_event_ids.add(event_id)
                             matches.add((patient_id, visit_id, event_id, key, term))
             if matched_patient:
+                #print("Matched patient")
+                #import pdb;pdb.set_trace()
                 matched_patients.add_patient(patient)
+        import pdb;pdb.set_trace()
         return matched_patients, matches
                         
     def attach_visits_to_patients(self, visits, patient_ids):
@@ -152,6 +158,11 @@ class PatientDB():
         event_roles = set()
         entity_levels = ['patient', 'visit', 'event']
         
+        # Add meddra roles
+        meddra_roles = ['SOC_text', 'HLGT_text', 'HLT_text', 'PT_text', 'concept_text']
+        #'HLGT_CUI', 'HLT_CUI', 'PT_CUI', 'SOC_CUI', 'medID', 'PExperiencer', 'HLGT', 'HLT', 'PT', 'SOC']
+        event_roles.update(meddra_roles)
+        
         for event_type in event_types:
             if event_type == 'DiagnosisEvent':
                 event_type_roles = ['diagnosis_icd9', 'diagnosis_name', 'diagnosis_long_name']
@@ -167,6 +178,7 @@ class PatientDB():
                 event_type_roles = ['location', 'vital_outcome']
 
             event_roles.update(event_type_roles)
+        
 
 
         # prepare event_counter and event_items
@@ -212,6 +224,9 @@ class PatientDB():
                     
                     # Add items
                     for role in event_roles:
+                        # Skip roles that don't exist in event
+                        if not event.roles.get(role):
+                            continue
                         item = event.roles[role]
                         # Add item to all class sets
                         event_items[role].add(item)
@@ -259,7 +274,7 @@ class PatientDB():
         match_year=bool(year)
         match_month=bool(month)
         match_day=bool(day)
-        date_db = PatientDB()
+        date_db = self.reproduce()
         for patient_id, patient in self.patients.items():
             patient_match = False
             matched_visits = []
@@ -322,7 +337,7 @@ class PatientDB():
         ethnicity_dbs = dict()
         # Create empty ethnicity dbs
         for ethnicity in unique_ethnicities:
-            ethnicity_dbs[ethnicity] = PatientDB(name=ethnicity)
+            ethnicity_dbs[ethnicity] = self.reproduce(name=ethnicity)
         # Put patients in their respective ethnicity dbs
         for patient in self.patients.values():
             ethnicity_dbs[patient.ethnicity].add_patient(patient)
@@ -335,7 +350,7 @@ class PatientDB():
         gender_dbs = dict()
         # Create empty gender dbs
         for gender in unique_genders:
-            gender_dbs[gender] = PatientDB(name=gender)
+            gender_dbs[gender] = self.reproduce(name=gender)
         # Put patients in their respective gender dbs
         for patient in self.patients.values():
             gender_dbs[patient.gender].add_patient(patient)
@@ -347,7 +362,7 @@ class PatientDB():
         race_dbs = dict()
         # Create empty race dbs
         for race in unique_races:
-            race_dbs[race] = PatientDB(name=race)
+            race_dbs[race] = self.reproduce(name=race)
         # Put patients in their respective race dbs
         for patient in self.patients.values():
             race_dbs[patient.race].add_patient(patient)
