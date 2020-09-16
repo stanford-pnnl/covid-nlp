@@ -321,7 +321,7 @@ class PatientDB():
         unique_ethnicities = self.get_unique_ethnicities()
         ethnicity_dbs = dict()
         # Create empty ethnicity dbs
-        for ethnicity in unique_ethnicites:
+        for ethnicity in unique_ethnicities:
             ethnicity_dbs[ethnicity] = PatientDB(name=ethnicity)
         # Put patients in their respective ethnicity dbs
         for patient in self.patients.values():
