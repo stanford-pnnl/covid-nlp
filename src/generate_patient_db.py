@@ -5,7 +5,7 @@ import os
 import sys
 import time
 from collections import Counter
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Dict, List, Set
 
 import dask
@@ -19,7 +19,7 @@ import pyarrow
 from tqdm import tqdm
 
 from data_schema import EntityEncoder, Event, Patient, Visit
-
+from patient_db import PatientDB
 
 def get_df(path, use_dask):
     if use_dask:
@@ -62,18 +62,6 @@ def get_patient_ids(df, use_dask=False):
     return unique_patient_ids
 
 
-def generate_patients_from_ids(patient_ids: Set[str]) -> Dict:
-    """Generate patients from list of IDs."""
-    patients: Dict = {}
-    # FIXME
-    # with tqdm(total=len(patient_ids), desc="Generating Patients from IDs")\
-    #         as pbar:
-    for patient_id in patient_ids:
-        patients[str(patient_id)] = Patient(patient_id=str(patient_id))
-        # pbar.update(1)
-
-    return patients
-
 
 def generate_path_with_time(path: str, extension: str) -> str:
     """Generate path string with time included."""
@@ -81,39 +69,6 @@ def generate_path_with_time(path: str, extension: str) -> str:
     time_path = f"{path}_{timestr}.{extension}"
 
     return time_path
-
-
-def export_patients(path: str, patients: Dict[str, Any],
-                    sorted_keys: List[str] = None):
-    """Export patients KG to a file."""
-    print(f"Dumping {len(patients.values())} patients to {path}")
-
-    # If sorted keys are not provided, come up with iteration values
-    if not sorted_keys:
-        keys = patients.keys()
-    else:
-        keys = sorted_keys
-
-    c: Counter = Counter()
-    c['num_keys'] = 0
-    c['successful_dumps'] = 0
-    c['failed_dumps'] = 0
-
-    with open(path, 'w') as f:
-        for key in keys:
-            c['num_keys'] += 1
-            patient = patients[key]
-            try:
-                patient_str = json.dumps(patient, cls=EntityEncoder)
-                f.write(f"{patient_str}\n")
-                c['successful_dumps'] += 1
-            except TypeError as e:
-                c['failed_dumps'] += 1
-                print(f"e: {e}")
-                import pdb
-                pdb.set_trace()
-                #print(f"Failed to dump patient {key}")
-    print(f"{c}")
 
 
 def get_distinct_column_values(df, output_dir, keys, use_dask=False):
@@ -429,24 +384,6 @@ def attach_events_to_visits(events: Dict[str, Event],
           f"Events, Num successful keys: {num_successful_keys}")
 
 
-def attach_visits_to_patients(visits, patients, patient_ids):
-    num_missing_keys = 0
-    num_successful_keys = 0
-    patient_ids = [str(x) for x in patient_ids]
-    # Attach visits to Patients
-    for patient_id in patient_ids:
-        patient_visits = visits[patient_id]
-        for visit_id, visit in patient_visits.items():
-            try:
-                patients[str(patient_id)].visits.append(visit)
-                num_successful_keys += 1
-            except KeyError:
-                import pdb
-                pdb.set_trace()
-                num_missing_keys += 1
-    print(f"Vists, Num missing keys: {num_missing_keys}\n"
-          f"Visits, Num successful keys: {num_successful_keys}")
-
 
 def select_non_empty_patients(patient_ids: Set[str],
                               visits: Dict[str, Dict[str, Visit]]) -> Set[int]:
@@ -493,27 +430,6 @@ def get_all_patient_ids(demographics, extractions, use_dask):
     return all_patient_ids
 
 
-#FIXME
-def add_patient_demographic_info(patients, demographics, use_dask):
-    for row in demographics.itertuples():
-        person_id = row.person_id
-        person_id_key = str(person_id)
-        # Does this person exist in the patient DB already?
-        if not patients.get(person_id_key):
-            #import pdb;pdb.set_trace()
-            print(f"Not finding {person_id} in patients dict")
-            continue
-        patient = patients[person_id_key]
-        patient.date_of_birth = date(row.year_of_birth,
-                                     row.month_of_birth,
-                                     row.day_of_birth)
-        patient.gender = row.gender
-        patient.race = row.race
-        patient.ethnicity = row.ethnicity
-
-
-
-
 def main(args):
     # Setup variables
     output_dir = 'output'
@@ -540,8 +456,6 @@ def main(args):
     demographics_path = f"{covid_data_dir}/demo/demo_all_pts.parquet"
     demographics = get_df(demographics_path, args.use_dask)
 
-    import pdb;pdb.set_trace()
-
     # Get meddra extractions
     meddra_extractions = get_df(path_pattern, args.use_dask)
 
@@ -550,8 +464,6 @@ def main(args):
 
     
     patient_ids = get_all_patient_ids(demographics, meddra_extractions, args.use_dask)
-    import pdb;pdb.set_trace()
-
 
     events = get_events(meddra_extractions)
     if not events:
@@ -572,22 +484,18 @@ def main(args):
     # Filter out patient IDs that don't have any visits
     patient_ids = select_non_empty_patients(patient_ids, visits)
 
+    patients = PatientDB(name='non_empty')
     # Generate patients from IDs
-    patients = generate_patients_from_ids(patient_ids)
+    patients.generate_patients_from_ids(patient_ids)
 
     # Attach demographic information to patients
-    add_patient_demographic_info(patients, demographics, args.use_dask)
+    patients.add_demographic_info(patients, demographics, args.use_dask)
 
     # Attach visits to patients
-    attach_visits_to_patients(visits, patients, patient_ids)
+    patients.attach_visits_to_patients(visits, patient_ids)
 
-    # Sort patient keys
-    sorted_patient_keys = sorted(patients.keys(), key=int)
-
-    #import pdb;pdb.set_trace()
-
-    # Dump patients
-    export_patients(patients_dump_path_unique, patients, sorted_patient_keys)
+    # Dump patients to a file
+    patients.dump(patients_dump_path_unique)
 
 
 if __name__ == '__main__':

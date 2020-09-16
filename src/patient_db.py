@@ -1,6 +1,6 @@
 # Patient DB
 import json
-from data_schema import EntityDecoder, Patient
+from data_schema import EntityDecoder, EntityEncoder, Patient
 from collections import Counter
 from datetime import datetime, timedelta, date
 from dateutil import rrule
@@ -17,6 +17,41 @@ class PatientDB():
             for l in f:
                 patient = json.loads(l, cls=EntityDecoder)
                 self.add_patient(patient)
+
+    def dump(self, path):
+        """Dump patients KG to a file."""
+        print(f"Dumping {len(self.patients)} patients to {path}")
+        # Sort patient keys
+        sorted_patient_keys = sorted(self.patients.keys(), key=int)
+
+        c: Counter = Counter()
+        c['num_keys'] = 0
+        c['successful_dumps'] = 0
+        c['failed_dumps'] = 0
+
+        with open(path, 'w') as f:
+            for key in keys:
+                c['num_keys'] += 1
+                patient = patients[key]
+                try:
+                    patient_str = json.dumps(patient, cls=EntityEncoder)
+                    f.write(f"{patient_str}\n")
+                    c['successful_dumps'] += 1
+                except TypeError as e:
+                    c['failed_dumps'] += 1
+                    print(f"e: {e}")
+                    import pdb
+                    pdb.set_trace()
+                    #print(f"Failed to dump patient {key}")
+        print(f"{c}")
+
+    def generate_patients_from_ids(self, patient_ids):
+        """Generate patients from list of IDs."""
+
+        for patient_id in patient_ids:
+            patient = Patient(patient_id=str(patient_id))
+            self.add_patient(patient)
+
     
     def add_patient(self, patient):
         patient_id = patient.entity_id
@@ -53,13 +88,48 @@ class PatientDB():
                 matched_patients.add_patient(patient)
         return matched_patients, matches
                         
-    def merge_patients(self, patient_db):
+    def attach_visits_to_patients(self, visits, patient_ids):
+        num_missing_keys = 0
+        num_successful_keys = 0
+        patient_ids = [str(x) for x in patient_ids]
+        # Attach visits to Patients
+        for patient_id in patient_ids:
+            patient_visits = visits[patient_id]
+            for visit_id, visit in patient_visits.items():
+                try:
+                    self.patients[str(patient_id)].visits.append(visit)
+                    num_successful_keys += 1
+                except KeyError:
+                    import pdb
+                    pdb.set_trace()
+                    num_missing_keys += 1
+        print(f"Vists, Num missing keys: {num_missing_keys}\n"
+              f"Visits, Num successful keys: {num_successful_keys}")
+
+    def merge_patients(self, patients):
         #print(f"Merging patient DBs...")
         # TODO: make graceful
-        patient_ids = list(patient_db.patients.keys())
+        patient_ids = list(patients.patients.keys())
         for patient_id in patient_ids:
-            patient = patient_db.patients[patient_id]
+            patient = patients.patients[patient_id]
             self.add_patient(patient)
+
+    def add_demographic_info(self, demographics, use_dask):
+        for row in demographics.itertuples():
+            person_id = row.person_id
+            person_id_key = str(person_id)
+            # Does this person exist in the patient DB already?
+            if not self.patients.get(person_id_key):
+                #import pdb;pdb.set_trace()
+                print(f"Not finding {person_id} in patients dict")
+                continue
+            patient = self.patients[person_id_key]
+            patient.date_of_birth = date(row.year_of_birth,
+                                     row.month_of_birth,
+                                     row.day_of_birth)
+            patient.gender = row.gender
+            patient.race = row.race
+            patient.ethnicity = row.ethnicity
 
     def get_stats(self):
         total_num_visits = 0
@@ -208,7 +278,12 @@ class PatientDB():
                     matched_patient.visits.append(matched_visit)
                 date_db.add_patient(matched_patient)
         return date_db
-                
+    
+    def get_unique_gender(self):
+        unique_genders = set()
+        for patient in self.patients.values():
+            unique_genders.add(patient.gender)
+        return unique_genders
 
     def agg_time(self, time_freq='M'):
         # Split patient DB in a DB per each time freq
@@ -224,6 +299,17 @@ class PatientDB():
         import pdb;pdb.set_trace()
         return visit_date_dbs
 
+    def agg_gender(self):
+        unique_genders = self.get_unique_genders()
+        gender_dbs = dict()
+        # Create empty gender dbs
+        for gender in unique_genders:
+            gender_dbs[gender] = PatientDB(name=gender)
+        # Put patients in their respective gender dbs
+        for patient in self.patients.values():
+            gender_dbs[patient.gender].add_patient(patient)
+        return gender_dbs
+        
 
 def get_top_k(agg_counts, keys, roles, k):
     top_k = dict()
