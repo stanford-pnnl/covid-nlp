@@ -30,7 +30,7 @@ class PatientDB():
         with open(path, 'w') as f:
             for key in sorted(self.patients.keys(), key=int):
                 c['num_keys'] += 1
-                patient = patients[key]
+                patient = self.patients[key]
                 try:
                     patient_str = json.dumps(patient, cls=EntityEncoder)
                     f.write(f"{patient_str}\n")
