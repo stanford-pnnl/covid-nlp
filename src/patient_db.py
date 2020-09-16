@@ -21,8 +21,6 @@ class PatientDB():
     def dump(self, path):
         """Dump patients KG to a file."""
         print(f"Dumping {len(self.patients)} patients to {path}")
-        # Sort patient keys
-        sorted_patient_keys = sorted(self.patients.keys(), key=int)
 
         c: Counter = Counter()
         c['num_keys'] = 0
@@ -30,7 +28,7 @@ class PatientDB():
         c['failed_dumps'] = 0
 
         with open(path, 'w') as f:
-            for key in keys:
+            for key in sorted(self.patients.keys(), key=int):
                 c['num_keys'] += 1
                 patient = patients[key]
                 try:
@@ -119,7 +117,7 @@ class PatientDB():
             person_id = row.person_id
             person_id_key = str(person_id)
             # Does this person exist in the patient DB already?
-            if not self.patients.get(person_id_key):
+            if not self.patients.get(person_id):
                 #import pdb;pdb.set_trace()
                 print(f"Not finding {person_id} in patients dict")
                 continue
@@ -311,7 +309,7 @@ class PatientDB():
         import pdb;pdb.set_trace()
         return visit_date_dbs
 
-    def agg_ethnicity(self)
+    def agg_ethnicity(self):
         unique_ethnicities = self.get_unique_ethnicities()
         ethnicity_dbs = dict()
         # Create empty ethnicity dbs
