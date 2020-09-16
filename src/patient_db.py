@@ -285,6 +285,18 @@ class PatientDB():
             unique_genders.add(patient.gender)
         return unique_genders
 
+    def get_unique_ethnicities(self):
+        unique_ethniciites = set()
+        for patient in self.patients.values():
+            unique_ethnicities.add(patient.ethnicity)
+        return unique_ethnicities
+
+    def get_unique_races(self):
+        unique_races = set()
+        for patient in self.patients.values():
+            unique_races.add(patient.race)
+        return unique_races
+
     def agg_time(self, time_freq='M'):
         # Split patient DB in a DB per each time freq
         visit_dates = self.get_visit_dates(time_freq)
@@ -299,6 +311,19 @@ class PatientDB():
         import pdb;pdb.set_trace()
         return visit_date_dbs
 
+    def agg_ethnicity(self)
+        unique_ethnicities = self.get_unique_ethnicities()
+        ethnicity_dbs = dict()
+        # Create empty ethnicity dbs
+        for ethnicity in unique_ethnicites:
+            ethnicity_dbs[ethnicity] = PatientDB(name=ethnicity)
+        # Put patients in their respective ethnicity dbs
+        for patient in self.patients.values():
+            ethnicity_dbs[patient.ethnicity].add_patient(patient)
+        
+        import pdb;pdb.set_trace()
+        return ethnicity_dbs
+
     def agg_gender(self):
         unique_genders = self.get_unique_genders()
         gender_dbs = dict()
@@ -308,7 +333,21 @@ class PatientDB():
         # Put patients in their respective gender dbs
         for patient in self.patients.values():
             gender_dbs[patient.gender].add_patient(patient)
+        import pdb;pdb.set_trace()
         return gender_dbs
+
+    def agg_race(self):
+        unique_races = self.get_unique_races()
+        race_dbs = dict()
+        # Create empty race dbs
+        for race in unique_races:
+            race_dbs[race] = PatientDB(name=race)
+        # Put patients in their respective race dbs
+        for patient in self.patients.values():
+            race_dbs[patient.race].add_patient(patient)
+        import pdb;pdb.set_trace()
+        return race_dbs
+
         
 
 def get_top_k(agg_counts, keys, roles, k):
