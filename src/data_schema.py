@@ -4,6 +4,8 @@ import os
 import re
 import sys
 from datetime import date, datetime
+from backports.datetime_fromisoformat import MonkeyPatch
+MonkeyPatch.patch_fromisoformat()
 from json import JSONDecoder, JSONEncoder
 from typing import Any, Dict, List, Set, Tuple
 
