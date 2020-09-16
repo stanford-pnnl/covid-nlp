@@ -364,7 +364,7 @@ class Patient(Entity):
         patient_str += f"{sep_2}date_of_birth: {self.date_of_birth}\n"
         patient_str += f"{sep_2}ethnicity: {self.ethnicity}\n"
         patient_str += f"{sep_2}gender: {self.gender}\n"
-        patient_str += f"{sep_2}race: {self.race}"
+        patient_str += f"{sep_2}race: {self.race}\n"
         patient_str += f"{sep_2}smoker: {self.smoker}\n"
         patient_str += f"{sep_2}visits: [\n"
 
