@@ -489,7 +489,7 @@ def main(args):
     patients.generate_patients_from_ids(patient_ids)
 
     # Attach demographic information to patients
-    patients.add_demographic_info(patients, demographics, args.use_dask)
+    patients.add_demographic_info(demographics, args.use_dask)
 
     # Attach visits to patients
     patients.attach_visits_to_patients(visits, patient_ids)
