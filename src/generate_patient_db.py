@@ -487,15 +487,22 @@ def main(args):
     patients = PatientDB(name='non_empty')
     # Generate patients from IDs
     patients.generate_patients_from_ids(patient_ids)
+    import pdb;pdb.set_trace()
 
     # Attach demographic information to patients
     patients.add_demographic_info(demographics, args.use_dask)
+    import pdb;pdb.set_trace()
 
     # Attach visits to patients
     patients.attach_visits_to_patients(visits, patient_ids)
+    import pdb;pdb.set_trace()
 
-    # Dump patients to a file
-    patients.dump(patients_dump_path_unique)
+    try:
+        # Dump patients to a file
+        patients.dump(patients_dump_path_unique)
+    except:
+        pass
+    import pdb;pdb.set_trace()
 
 
 if __name__ == '__main__':
