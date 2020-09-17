@@ -51,8 +51,8 @@ def mental_health_co_morbidities(patients, search_terms):
 
     print('Test split patient DB by monthly frequency key')
     monthly_splits = patients_matched.agg_time(time_freq='M')
-    for month_split_key, month_db in monthly_splits.items():
-        print(f"Split: {month_split_key}, {month_db}")
+    for month_db in monthly_splits.values():
+        print(f"{month_db}")
 
     import pdb;pdb.set_trace()
     print("END OF PROGRAM")
