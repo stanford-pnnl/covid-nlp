@@ -85,8 +85,8 @@ class PatientDB():
             pass
         self.patients[str(patient_id)] = patient
 
-    def match_patients(self, term, event_keys='', event_types=['']):
-        matched_patients = self.reproduce()
+    def match_patients(self, name, term, event_keys='', event_types=['']):
+        matched_patients = self.reproduce(name=name)
         matches = set()
         matched_patient_ids = set()
         matched_visit_ids = set()
