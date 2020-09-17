@@ -3,51 +3,32 @@ import json
 from collections import Counter
 import argparse
 
-
-def mental_health_co_morbidities(patients, search_terms):
-    print("Running mental health co-morbidities checks...")
+def match_terms(patients, terms):
     patients_matched = PatientDB(name='patients_matched')
-    import pdb;pdb.set_trace()
     matches = set()
-    print(f"search_terms: {search_terms}")
-    for term in search_terms:
+    print(f"Matching terms: {terms}")
+    for term in terms:
         term_patients_matched, term_matches = \
                 patients.match_patients(
                         term,
                         event_keys=['diagnosis_name'],
                         event_types=['DiagnosisEvent'])
         patients_matched.merge_patients(term_patients_matched)
-        print(f"\tterm: {term}, len(term_matches): {len(term_matches)}, len(mathes): {len(matches)}")
-        print(f"\tlen(term_patients_matched.patients.keys()): {len(term_patients_matched.patients.keys())}")
-        print(f"\tlen(patients_matched.patients.keys()): {len(patients_matched.patients.keys())}")
-
         matches = matches.union(term_matches)
-    print(f"{len(patients_matched.patients)} patients matched")
+        v = term_patients_matched
+        print(f"term: {term}, num_patients: {v.num_patients()}, num_visits: {v.num_visits()}, num_events: {v.num_events()}")
+    v = patients_matched
+    print(f"terms: {terms}, num_patients: {v.num_patients()}, num_visits: {v.num_visits()}, num_events: {v.num_events()}")
+    return patients_matched, matches
 
-    # Lookup information from visits where these codes were reported and collect other diagnosis code
-    patient_ids = set()
-    visit_ids = set()
-    event_ids = set()
-    keys = set()
-    terms = set()
-    for match in matches:
-        patient_id, visit_id, event_id, key, term = match
-        patient_ids.add(patient_id)
-        visit_ids.add(visit_id)
-        event_ids.add(event_id)
-        keys.add(key)
-        terms.add(term)
 
-    diagnosis_event_counters, \
-            diagnosis_event_roles, \
-            diagnosis_event_entity_levels, \
-            diagnosis_event_count_per_entity_level = \
-            patients_matched.get_event_counters(event_types=['DiagnosisEvent'])
-    for entity_level, entity_count in diagnosis_event_count_per_entity_level.items():
-        print(f"entity_level: {entity_level}, entity_count: {entity_count}")
+def mental_health_co_morbidities(patients, search_terms):
+    print("Running mental health co-morbidities checks...")
+    patients_matched, matches = match_terms(patients, search_terms)
+
+    diagnosis_event_counters, diagnosis_event_roles, diagnosis_event_entity_levels = patients_matched.get_event_counters(event_types=['DiagnosisEvent'], meddra_roles=True)
 
     # Aggregate counts for each such diagnosis code either based on the number of visits or number of patients
-    patient_matched_stats = patients_matched.get_stats()
     import pdb;pdb.set_trace()
     print("Report top-k diagnosis codes")
     # Report top-k diagnosis codes
@@ -64,6 +45,8 @@ def mental_health_co_morbidities(patients, search_terms):
 
     print('Test split patient DB by monthly frequency key')
     monthly_splits = patients_matched.agg_time(time_freq='M')
+    for k, v in monthly_splits.items():
+        print(f"Split: {k}, num_patients: {v.num_patients()}, num_visits: {v.num_visits()}, num_events: {v.num_events()}")
 
     import pdb;pdb.set_trace()
     print("END OF PROGRAM")
