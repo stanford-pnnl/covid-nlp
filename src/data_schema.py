@@ -339,6 +339,13 @@ class Patient(Entity):
     def num_visits(self):
         return len(self.visits)
 
+    def num_events(self):
+        num_events = 0
+        for visit in self.visits:
+            for event in visit.events:
+                num_events += 1
+        return num_events
+
     def __eq__(self, other):
         """Test if Patient objects are equal."""
         if not isinstance(other, Patient):
