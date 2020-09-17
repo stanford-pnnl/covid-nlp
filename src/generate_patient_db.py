@@ -352,6 +352,7 @@ def count_column_values(row, counter):
     counter['ttype'][row.ttype] += 1
 
 def get_diagnosis_events(events, event_cnt, df):
+    print("Getting diagnosis events...")
     columns = dict()
     column_names = df.columns.tolist()
     for column in column_names:
@@ -362,12 +363,13 @@ def get_diagnosis_events(events, event_cnt, df):
     # temporarily using to satisfy unkown columns addition to roles
     
     #FIXME, only look at 1000000 rows
-    row_seen_max = 1000000
-    row_seen = 0
+    rows_seen = 0
+    rows_seen_max = 100000
+    print(f"Limiting iteration of dataframe to a maximum of {rows_seen_max} rows")
     for row in df.itertuples():
-        row_seen += 1
-        if row_seen % 10000 == 0:
-            print(f"Row: {row_seen}")
+        rows_seen += 1
+        if rows_seen % 10000 == 0:
+            print(f"Row: {rows_seen}/rows_seen_max")
         if row_seen > row_seen_max:
             break
         #import pdb;pdb.set_trace()
@@ -397,12 +399,11 @@ def get_diagnosis_events(events, event_cnt, df):
         diagnosis_event = Event(chartdate=date, provenance=date, event_id=event_cnt['id'], patient_id=patient_id)
         diagnosis_name = row.concept_text
         diagnosis_long_name = row.concept_text
-        diagnosis_event.diagnosis_role(diagnosis_icd9='', diagnosis_name=diagnosis_name, diagnosis_long_name=diagnosis_long_name)
+        #FIXME, should I keep these attributes empty since there is no exact match?
+        diagnosis_event.diagnosis_role(diagnosis_icd9='', diagnosis_name='', diagnosis_long_name='')
 
         # Add meddra items
         add_meddra_roles(diagnosis_event, row)
-
-
         events[str(event_cnt['id'])] = diagnosis_event
 
     #print(f"columns: {columns}")
