@@ -4,10 +4,12 @@ import os
 import re
 import sys
 from datetime import date, datetime
-from backports.datetime_fromisoformat import MonkeyPatch
-MonkeyPatch.patch_fromisoformat()
 from json import JSONDecoder, JSONEncoder
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+from backports.datetime_fromisoformat import MonkeyPatch
+
+MonkeyPatch.patch_fromisoformat()
 
 ETYPE_PATIENT = "Patient"
 ETYPE_VISIT = "Visit"
@@ -270,6 +272,12 @@ class Visit(Entity):
         self.patient_id: str = patient_id
         self.events: List[Event] = []
 
+    def num_events(self):
+        num_events = 0
+        for event in self.events:
+            num_events += 1
+        return num_events
+
     # FIXME, broken
     def __eq__(self, other):
         """Test if Visit objects are equal."""
@@ -315,7 +323,7 @@ class Patient(Entity):
         Entity.__init__(self, patient_embedding, patient_id, ETYPE_PATIENT)
         self.adult: bool = patient_adult
         self.age: Any = patient_age
-        self.date_of_birth: date = patient_date_of_birth
+        self.date_of_birth: Optional[date] = patient_date_of_birth
         self.ethnicity: str = patient_ethnicity
         self.gender: str = patient_gender
         self.race: str = patient_race
@@ -324,11 +332,6 @@ class Patient(Entity):
         self.month_of_birth: int = -1
         self.day_of_birth: int = -1
         self.birth_datetime = None
-
-        # Not sure if this is the smartest way to store this
-        #self.year_of_birth: int = patient_year_of_birth
-        #self.month_of_birth: int = patient_month_of_birth
-        #self.day_of_birth: int = patient_day_of_birth
 
         # TODO, make sure visits are unique
         self.visits: List[Visit] = []
@@ -342,8 +345,8 @@ class Patient(Entity):
     def num_events(self):
         num_events = 0
         for visit in self.visits:
-            for event in visit.events:
-                num_events += 1
+            num_events += visit.num_events()
+
         return num_events
 
     def __eq__(self, other):
