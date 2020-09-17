@@ -328,9 +328,6 @@ class Patient(Entity):
         self.gender: str = patient_gender
         self.race: str = patient_race
         self.smoker: bool = patient_smoker
-        self.year_of_birth: int = -1
-        self.month_of_birth: int = -1
-        self.day_of_birth: int = -1
         self.birth_datetime = None
 
         # TODO, make sure visits are unique
