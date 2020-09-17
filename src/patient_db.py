@@ -291,16 +291,17 @@ class PatientDB():
             min_visit_date.year, min_visit_date.month, 1)
         end_visit_date = datetime(max_visit_date.year, max_visit_date.month, 1)
         delta = timedelta()
-        for visit_date in rrule.rrule(rrule.MONTHLY, dtstart=start_visit_date, until=end_visit_date):
-            print(visit_date)
+        #FIXME
+        #for visit_date in rrule.rrule(rrule.MONTHLY, dtstart=start_visit_date, until=end_visit_date):
+        #    print(visit_date)
         #import pdb;pdb.set_trace()
         return visit_dates
 
-    def select_date(self, year=None, month=None, day=None):
+    def select_date(self, name, year=None, month=None, day=None):
         match_year = bool(year)
         match_month = bool(month)
         match_day = bool(day)
-        date_db = self.reproduce()
+        date_db = self.reproduce(name=name)
         for patient_id, patient in self.patients.items():
             patient_match = False
             matched_visits = []
@@ -351,9 +352,8 @@ class PatientDB():
         # freq_aggs = self.agg_key(entity_level='Visit', '')
         # iterate through visit dates and create a patientDB per time step
         for visit_date in visit_dates:
-            visit_date_db = self.select_date(
-                year=visit_date.year, month=visit_date.month)
             date_key = visit_date.strftime("%Y-%m")
+            visit_date_db = self.select_date(name=date_key, year=visit_date.year, month=visit_date.month)
             visit_date_dbs[date_key] = visit_date_db
 
         #import pdb;pdb.set_trace()
