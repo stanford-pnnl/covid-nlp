@@ -2,7 +2,9 @@
 import json
 from collections import Counter
 from datetime import date, datetime, timedelta
-
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from dateutil import rrule
 
 from data_schema import EntityDecoder, EntityEncoder, Patient
@@ -26,6 +28,7 @@ class PatientDB():
         return PatientDB(name=name)
 
     def load(self, path):
+        print(f"Loading PatientDB from {path}")
         with open(path, 'r') as f:
             for l in f:
                 patient = json.loads(l, cls=EntityDecoder)
@@ -70,6 +73,12 @@ class PatientDB():
         for patient in self.patients.values():
             num_events += patient.num_events()
         return num_events
+
+    def genders(self):
+        genders = set()
+        for patient in self.patients.values():
+            genders.add(patient.gender)
+        return genders
 
     def generate_patients_from_ids(self, patient_ids):
         """Generate patients from list of IDs."""
@@ -165,6 +174,110 @@ class PatientDB():
             patient.race = row.race
             patient.ethnicity = row.ethnicity
         print(f"{c}")
+
+    def calculate_patient_ages(self, compare_date):
+        max_age = 0
+        min_age = 9999
+        for patient in self.patients.values():
+            # We can't calculate patient ages w/o dob
+            if not patient.date_of_birth:
+                continue
+            dob = patient.date_of_birth
+            age = compare_date - dob
+            # Full years old, birthdays essentially
+            age_years = int(age.days/365)
+            #import pdb;pdb.set_trace()
+            patient.age = age_years  # FIXME, best way?
+            if patient.age > max_age:
+                max_age = patient.age
+            if patient.age < min_age:
+                min_age = patient.age
+
+            # Set patient.adult attribute based off age
+            if patient.age >= 18:
+                patient.adult = True
+            elif patient.age < 0:
+                print(f"Found patient with negative age: {patient.age}")
+                import pdb;pdb.set_trace()
+            else:
+                patient.adult = False
+        return min_age, max_age
+
+    def calulcate_patient_is_adult(self):
+        for patient in self.patients.values():
+            if not patient.age:
+                continue
+            if patient.age >= 18:
+                patient.adult = True
+            else:
+                patient.adult = False
+
+    def calculate_age_gender_distribution(self, min_age, max_age, genders, path):
+        print("Calculating age distribution...")
+        success_counter = Counter()
+        age_counter = Counter()
+        age_range = range(min_age, max_age + 1)
+        ages = dict()
+        #ages['all'] = []
+        for gender in genders:
+            ages[gender] = []
+        for patient in self.patients.values():
+            success_counter['total_patients'] += 1
+
+            if not patient.age:
+                success_counter['patients_without_age'] += 1
+                continue
+            else:
+                success_counter['patients_with_age'] += 1
+            age_counter[patient.age] += 1
+            #ages['all'].append(patient.age)
+            if not patient.gender:
+                success_counter['patients_without_gender'] += 1
+                continue
+            else:
+                success_counter['patients_with_gender'] += 1
+            ages[gender].append(patient.age)
+        print(f"age_counter: {age_counter}")
+        print(f"success_counter: {success_counter}")
+        ages_bins = list(age_range)
+        sorted_gender_keys = sorted(ages.keys())
+        np_ages = dict()
+        for ages_key in ages:
+            np_ages[ages_key] = np.array(ages[ages_key])
+        import pdb;pdb.set_trace()
+        self.plot_age_gender_distribution(path, np_ages, ages_bins, sorted_gender_keys)
+
+    def get_age_colors_legend(self, ages):
+        r_ages = []
+        avail_colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
+        colors = []
+        legend = dict()
+        color_index = 0
+        for gender, gender_ages in ages.items():
+            r_ages.append(gender_ages)
+            color = avail_colors[color_index]
+            colors.append(color)
+            color_index += 1
+            legend[gender] = color
+        return r_ages, colors, legend
+            
+    def plot_age_gender_distribution(self, path, ages, ages_bins, legend):
+        print("Plotting age distribution...")
+        fig, ax = plt.subplots()
+        # FIXME for generalized genders
+        #age_arrays, colors, labels = self.get_age_colors_legend(ages)
+        colors = ["red", "blue"]
+        legend = dict()
+        legend['FEMALE'] = "red"
+        legend['MALE'] = "blue"
+        import pdb;pdb.set_trace()
+        ax.hist([ages['FEMALE'], ages['MALE']], bins=ages_bins, stacked=True, color=colors)
+        ax.legend(legend)
+        ax.set_xlabel('Age(Years)', fontsize=16)
+        ax.set_ylabel('Count', fontsize=16)
+        print(f"Saving age histogram to {path}")
+        fig.savefig(path)
+
 
     def get_stats(self):
         total_num_visits = 0
