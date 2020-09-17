@@ -13,14 +13,14 @@ def match_terms(patients, terms):
     for term in terms:
         term_patients_matched, term_matches = \
             patients.match_patients(
+                f'{term}_patients_matched',
                 term,
                 event_keys=['diagnosis_name'],
                 event_types=['DiagnosisEvent'])
         patients_matched.merge_patients(term_patients_matched)
         matches = matches.union(term_matches)
-        print(f"term: {}, {patients_matched}")
-    v = patients_matched
-    print(f"terms: {terms}, {patients_matched}")
+        print(f"{term_patients_matched}")
+    print(f"{patients_matched}")
     return patients_matched, matches
 
 
