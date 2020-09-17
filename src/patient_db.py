@@ -145,8 +145,8 @@ class PatientDB():
     def add_demographic_info(self, demographics, use_dask):
         print("Adding demographic info")
         c = Counter()
-        c['patients_found'] = 0
-        c['patients_not_found'] = 0
+        c['success_add_demographics'] = 0
+        c['fail_patients_not_found'] = 0
         for row in demographics.itertuples():
             person_id = row.person_id
             person_id_key = str(person_id)
