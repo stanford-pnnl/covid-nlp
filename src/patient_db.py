@@ -46,6 +46,21 @@ class PatientDB():
                     #print(f"Failed to dump patient {key}")
         print(f"{c}")
 
+    def num_patients(self):
+        return len(self.patients.keys())
+
+    def num_visits(self):
+        num_visits = 0
+        for patient in self.patients.values():
+            num_visits += patient.num_visits()
+        return num_visits
+
+    def num_events(self):
+        num_events = 0
+        for patient in self.patients.values():
+            num_events += patient.num_events()
+        return num_events
+
     def generate_patients_from_ids(self, patient_ids):
         """Generate patients from list of IDs."""
 
@@ -89,7 +104,6 @@ class PatientDB():
                 #print("Matched patient")
                 #import pdb;pdb.set_trace()
                 matched_patients.add_patient(patient)
-        import pdb;pdb.set_trace()
         return matched_patients, matches
                         
     def attach_visits_to_patients(self, visits, patient_ids):
@@ -152,17 +166,14 @@ class PatientDB():
         stats['avg_num_visits'] = total_num_visits / float(len(self.patients))
         return stats
 
-    def get_event_counters(self, event_types):
-        counters = dict()
-        items = dict()
+    def get_event_roles(self, event_types, meddra_roles=False):
         event_roles = set()
-        entity_levels = ['patient', 'visit', 'event']
-        
-        # Add meddra roles
-        meddra_roles = ['SOC_text', 'HLGT_text', 'HLT_text', 'PT_text', 'concept_text']
-        #'HLGT_CUI', 'HLT_CUI', 'PT_CUI', 'SOC_CUI', 'medID', 'PExperiencer', 'HLGT', 'HLT', 'PT', 'SOC']
-        event_roles.update(meddra_roles)
-        
+
+        if meddra_roles:
+            meddra_roles = ['SOC_text', 'HLGT_text', 'HLT_text', 'PT_text', 'concept_text']
+            #'HLGT_CUI', 'HLT_CUI', 'PT_CUI', 'SOC_CUI', 'medID', 'PExperiencer', 'HLGT', 'HLT', 'PT', 'SOC']
+            event_roles.update(meddra_roles)
+
         for event_type in event_types:
             if event_type == 'DiagnosisEvent':
                 event_type_roles = ['diagnosis_icd9', 'diagnosis_name', 'diagnosis_long_name']
@@ -178,8 +189,15 @@ class PatientDB():
                 event_type_roles = ['location', 'vital_outcome']
 
             event_roles.update(event_type_roles)
-        
+        return event_roles    
 
+
+    def get_event_counters(self, event_types, meddra_roles=False):
+        counters = dict()
+        items = dict()
+
+        entity_levels = ['patient', 'visit', 'event']
+        event_roles = self.get_event_roles(event_types, meddra_roles=True)
 
         # prepare event_counter and event_items
         for entity_level in entity_levels:
@@ -197,25 +215,20 @@ class PatientDB():
         visit_counter = counters['visit']
         event_counter = counters['event']
         
-        entity_count_per_level = Counter()
-        
         # Point out that items sets are temp
 
         # Iterate through all patients
         for patient in self.patients.values():
-            entity_count_per_level['patient'] += 1
             # Clear patient items set
             for role in event_roles:
                 patient_items[role].clear() 
             # Iterate through all patient visits
             for visit in patient.visits:
-                entity_count_per_level['visit'] += 1
                 # Clear visit items set
                 for role in event_roles:
                     visit_items[role].clear()
                 # Iterate through all visit events
                 for event in visit.events:
-                    entity_count_per_level['event'] += 1
                     if event.event_type not in event_types:
                         continue
                     # Clear event items
@@ -246,7 +259,7 @@ class PatientDB():
                 for item in items:
                     patient_counter[role_key][item] += 1
 
-        return counters, event_roles, entity_levels, entity_count_per_level
+        return counters, event_roles, entity_levels
 
     def get_visit_dates(self, time_freq='M'):
         visit_dates = set()
@@ -267,7 +280,7 @@ class PatientDB():
         delta = timedelta()
         for visit_date in rrule.rrule(rrule.MONTHLY, dtstart=start_visit_date, until=end_visit_date):
             print(visit_date)
-        import pdb;pdb.set_trace()
+        #import pdb;pdb.set_trace()
         return visit_dates
 
     def select_date(self, year=None, month=None, day=None):
@@ -329,7 +342,7 @@ class PatientDB():
             date_key = visit_date.strftime("%Y-%m")
             visit_date_dbs[date_key] = visit_date_db
         
-        import pdb;pdb.set_trace()
+        #import pdb;pdb.set_trace()
         return visit_date_dbs
 
     def agg_ethnicity(self):
