@@ -1,13 +1,17 @@
 # Patient DB
 import json
-from collections import Counter
+import random
+import time
+from collections import Counter, namedtuple
 from datetime import date, datetime, timedelta
+from typing import Set, Any, Optional
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from dateutil import rrule
 
-from data_schema import EntityDecoder, EntityEncoder, Patient
+from data_schema import EntityDecoder, EntityEncoder, Event, Patient, Visit
 
 
 class PatientDB():
@@ -15,41 +19,60 @@ class PatientDB():
 
     def __init__(self, name=""):
         self.name = name
-        self.patients = dict()
+
+        # Internal data
+        self.data = dict()
+        self.data['patients'] = dict()
+        self.data['visits'] = dict()
+        self.data['events'] = dict()
+
+        # Aliases
+        self.patients = self.data['patients'].values()
+        self.visits = self.data['visits'].values()
+        self.events = self.data['events'].values()
 
     def __str__(self):
-        patient_db_str = f"PatientDB(name: {self.name}, "
-        patient_db_str += f"num_patients: {self.num_patients()}, "
-        patient_db_str += f"num_visits: {self.num_visits()}, "
-        patient_db_str += f"num_events: {self.num_events()})"
-        return patient_db_str
+        s = f"PatientDB(name: {self.name}, "
+        s += f"num_patients: {self.num_patients()}, "
+        s += f"num_visits: {self.num_visits()}, "
+        s += f"num_events: {self.num_events()}, "
+        s += f"gender_info: {self.gender_info()}"
+        return s
 
     def reproduce(self, name=''):
+        """Create a new PatientDB inside an existing PatientDB class"""
         return PatientDB(name=name)
 
     def load(self, path):
         print(f"Loading PatientDB from {path}")
         with open(path, 'r') as f:
-            for l in f:
-                patient = json.loads(l, cls=EntityDecoder)
+            for line in f:
+                patient = json.loads(line, cls=EntityDecoder)
                 self.add_patient(patient)
 
-    def dump(self, path):
+    def generate_path_with_time(self, path: str, extension: str) -> str:
+        """Generate path string with time included."""
+        timestr = time.strftime("%Y%m%d-%H%M%S")
+        time_path = f"{path}_{timestr}.{extension}"
+
+        return time_path
+
+    def dump(self, output_dir: str, path: str, extension: str = "jsonl",
+             unique: bool = False):
         """Dump patients KG to a file."""
-        print(f"Dumping {len(self.patients)} patients to {path}")
+        if unique:
+            path = self.generate_path_with_time(path, extension)
+        output_path = f"{output_dir}/{path}"
+        print(f"Dumping {len(self.patients)} patients to {output_path}")
 
         c: Counter = Counter()
-        c['num_keys'] = 0
-        c['successful_dumps'] = 0
-        c['failed_dumps'] = 0
-
-        with open(path, 'w') as f:
-            for key in sorted(self.patients.keys(), key=int):
+        with open(output_path, 'w') as f:
+            for key in sorted(self.data['patients'].keys(), key=int):
                 c['num_keys'] += 1
-                patient = self.patients[key]
+                patient = self.get_patient(key)
                 try:
-                    patient_str = json.dumps(patient, cls=EntityEncoder)
-                    f.write(f"{patient_str}\n")
+                    patient_dump = json.dumps(patient, cls=EntityEncoder)
+                    f.write(f"{patient_dump}\n")
                     c['successful_dumps'] += 1
                 except TypeError as e:
                     c['failed_dumps'] += 1
@@ -59,18 +82,28 @@ class PatientDB():
                     #print(f"Failed to dump patient {key}")
         print(f"{c}")
 
+    def num_entities(self, entity):
+        return len(self.data[entity].keys())
+
     def num_patients(self):
-        return len(self.patients.keys())
+        return self.num_entities('patients')
 
     def num_visits(self):
+        return self.num_entities('visits')
+
+    def num_events(self):
+        return self.num_entities('events')
+
+    def num_visits_iter(self):
         num_visits = 0
-        for patient in self.patients.values():
+        for patient in self.patients:
             num_visits += patient.num_visits()
         return num_visits
 
-    def num_events(self):
+    # FIXME
+    def num_events_iter(self):
         num_events = 0
-        for patient in self.patients.values():
+        for patient in self.patients:
             num_events += patient.num_events()
         return num_events
 
@@ -80,6 +113,15 @@ class PatientDB():
             genders.add(patient.gender)
         return genders
 
+    def get_gender_info(self):
+        gender_counter = Counter()
+        for patient in self.patients:
+            gender_counter[patient.gender] += 1
+        return gender_counter
+
+    def get_patient(self, patient_id):
+        return self.data['patient'].get(patient_id)
+
     def generate_patients_from_ids(self, patient_ids):
         """Generate patients from list of IDs."""
 
@@ -87,25 +129,74 @@ class PatientDB():
             patient = Patient(patient_id=str(patient_id))
             self.add_patient(patient)
 
-    def add_patient(self, patient):
-        patient_id = patient.entity_id
-        if self.patients.get(patient_id):
-            #print(f"Overwriting patient {patient_id}")
-            pass
-        self.patients[str(patient_id)] = patient
+    def merge_patient(self, patient):
+        patient_id = patient.patient_id
+        patient = self.get_patient_by_patient_id(patient_id)
+        entity_id = None
+        if patient:
+            entity_id = patient.entity_id
+            print(f"Overwriting patient {patient_id} "
+                  f"w/ entity_id: {entity_id}")
+        self.add_patient(patient, entity_id=entity_id)
+
+    def max_entity_key(self, entity):
+        events_keys = self.data[entity].keys()
+        events_keys = [int(x) for x in events_keys]
+        max_events_key = max(events_keys)
+        return max_events_key
+
+    def find_empty_entity_key(self, entity) -> str:
+        max_entity_key = self.max_entity_key(entity)
+        full_entity_keys = set()
+        for key in range(max_entity_key):
+            full_entity_keys.add(key)
+        actual_entity_keys = set(self.data[entity].keys())
+        available_entity_keys = full_entity_keys.difference(actual_entity_keys)
+
+        if not available_entity_keys:
+            # Adding new key to full dict
+            events_key = self.num_entities(entity)
+        else:
+            events_key = random.choice(list(available_entity_keys))
+
+        return events_key
+
+    def add_event(self, event: Event, entity_id: str = None):
+        if not entity_id:
+            entity_id = self.find_empty_entity_key('events')
+        event.entity_id = entity_id
+        self.data['events'][entity_id] = event
+
+    def add_visit(self, visit: Visit, entity_id: str = None):
+        if not entity_id:
+            entity_id = self.find_empty_entity_key('visits')
+        visit.entity_id = entity_id
+        self.data['visits'][entity_id] = visit
+
+    def add_patient(self, patient: Patient, entity_id: str = None):
+        if not entity_id:
+            entity_id = self.find_empty_entity_key('patients')
+        patient.entity_id = entity_id
+        self.data['patients'][entity_id] = patient
+
+    def get_unique_matches(self, matches):
+        matched_ids = dict()
+        matched_ids['patient'] = Counter()
+        matched_ids['visit'] = Counter()
+        matched_ids['event'] = Counter()
 
     def match_patients(self, name, term, event_keys='', event_types=['']):
-        matched_patients = self.reproduce(name=name)
         matches = set()
-        matched_patient_ids = set()
-        matched_visit_ids = set()
-        matched_event_ids = set()
+        Match = namedtuple(
+            'Match', ['patient_id', 'visit_id', 'event_id', 'key', 'term'])
 
-        for patient in self.patients.values():
+        # Search all patients
+        for patient in self.patients:
             patient_id = patient.entity_id
-            matched_patient = False
+            # Search all patient visits
             for visit in patient.visits:
                 visit_id = visit.entity_id
+                # Search all patient events
                 for event in visit.events:
                     event_id = event.entity_id
                     if event.event_type not in event_types:
@@ -113,35 +204,35 @@ class PatientDB():
                     for key in event_keys:
                         compare_term = event.roles[key]
                         if term == compare_term:
-                            matched_patient = True
-                            matched_patient_ids.add(patient_id)
-                            matched_visit_ids.add(visit_id)
-                            matched_event_ids.add(event_id)
-                            matches.add(
-                                (patient_id, visit_id, event_id, key, term))
-            if matched_patient:
-                #print("Matched patient")
-                #import pdb;pdb.set_trace()
-                matched_patients.add_patient(patient)
+                            match = Match(patient_id, visit_id, event_id, key,
+                                          term)
+                            matches.add(match)
+
+        matched_patients = self.reproduce(name=name)
+        # Add matched patients to matched_patients PatientDB
+        for match in matches:
+            patient = self.get_patient(match.patient_id)
+            matched_patients.add_patient(patient)
         return matched_patients, matches
 
-    def attach_visits_to_patients(self, visits, patient_ids):
-        num_missing_keys = 0
-        num_successful_keys = 0
+    def attach_visits_to_patients(self, patient_ids):
+        c = Counter()
         patient_ids = [str(x) for x in patient_ids]
-        # Attach visits to Patients
-        for patient_id in patient_ids:
-            patient_visits = visits[patient_id]
-            for visit_id, visit in patient_visits.items():
-                try:
-                    self.patients[str(patient_id)].visits.append(visit)
-                    num_successful_keys += 1
-                except KeyError:
-                    import pdb
-                    pdb.set_trace()
-                    num_missing_keys += 1
-        print(f"Vists, Num missing keys: {num_missing_keys}\n"
-              f"Visits, Num successful keys: {num_successful_keys}")
+        for visit in self.visits:
+            patient_id = str(visit.patient_id)
+            # Skipping patient_ids not in patient_ids set
+            if patient_id not in patient_ids:
+                continue
+            patient = self.get_patient_by_patient_id(patient_id)
+            if not patient:
+                import pdb
+                pdb.set_trace()
+                c['missing'] += 1
+                continue
+            c['success'] += 1
+            patient.visits.append(visit)
+        print(f"Vists, Num missing keys: {c['missing']}\n"
+              f"Visits, Num successful keys: {c['success']}")
 
     def merge_patients(self, patients):
         #print(f"Merging patient DBs...")
@@ -149,7 +240,7 @@ class PatientDB():
         patient_ids = list(patients.patients.keys())
         for patient_id in patient_ids:
             patient = patients.patients[patient_id]
-            self.add_patient(patient)
+            self.merge_patient(patient)
 
     def add_demographic_info(self, demographics, use_dask):
         print("Adding demographic info")
@@ -160,14 +251,14 @@ class PatientDB():
             person_id = row.person_id
             person_id_key = str(person_id)
             # Does this person exist in the patient DB already?
-            if not self.patients.get(person_id_key):
+            if not self.data.get(person_id_key):
                 #import pdb;pdb.set_trace()
                 #print(f"Not finding {person_id_key} in patients dict")
                 c['patients_not_found'] += 1
                 continue
 
             c['patients_found'] += 1
-            patient = self.patients[person_id_key]
+            patient = self.data[person_id_key]
             patient.date_of_birth = date(
                 row.year_of_birth, row.month_of_birth, row.day_of_birth)
             patient.gender = row.gender
@@ -185,7 +276,7 @@ class PatientDB():
             dob = patient.date_of_birth
             age = compare_date - dob
             # Full years old, birthdays essentially
-            age_years = int(age.days/365)
+            age_years = int(age.days / 365)
             #import pdb;pdb.set_trace()
             patient.age = age_years  # FIXME, best way?
             if patient.age > max_age:
@@ -198,7 +289,8 @@ class PatientDB():
                 patient.adult = True
             elif patient.age < 0:
                 print(f"Found patient with negative age: {patient.age}")
-                import pdb;pdb.set_trace()
+                import pdb
+                pdb.set_trace()
             else:
                 patient.adult = False
         return min_age, max_age
@@ -212,7 +304,8 @@ class PatientDB():
             else:
                 patient.adult = False
 
-    def calculate_age_gender_distribution(self, min_age, max_age, genders, path):
+    def calculate_age_gender_distribution(self, min_age, max_age, genders,
+                                          path):
         print("Calculating age distribution...")
         success_counter = Counter()
         age_counter = Counter()
@@ -244,8 +337,10 @@ class PatientDB():
         np_ages = dict()
         for ages_key in ages:
             np_ages[ages_key] = np.array(ages[ages_key])
-        import pdb;pdb.set_trace()
-        self.plot_age_gender_distribution(path, np_ages, ages_bins, sorted_gender_keys)
+        import pdb
+        pdb.set_trace()
+        self.plot_age_gender_distribution(path, np_ages, ages_bins,
+                                          sorted_gender_keys)
 
     def get_age_colors_legend(self, ages):
         r_ages = []
@@ -266,18 +361,24 @@ class PatientDB():
         fig, ax = plt.subplots()
         # FIXME for generalized genders
         #age_arrays, colors, labels = self.get_age_colors_legend(ages)
-        colors = ["red", "blue"]
+        colors = ['red', 'blue']
         legend = dict()
         legend['FEMALE'] = "red"
         legend['MALE'] = "blue"
-        import pdb;pdb.set_trace()
-        ax.hist([ages['FEMALE'], ages['MALE']], bins=ages_bins, stacked=True, color=colors)
+        import pdb
+        pdb.set_trace()
+        ax.hist(
+            [ages['FEMALE'], ages['MALE']],
+            bins=ages_bins,
+            density=True,
+            histtype='bar',
+            stacked=True,
+            color=colors)
         ax.legend(legend)
         ax.set_xlabel('Age(Years)', fontsize=16)
         ax.set_ylabel('Count', fontsize=16)
         print(f"Saving age histogram to {path}")
         fig.savefig(path)
-
 
     def get_stats(self):
         total_num_visits = 0
@@ -294,7 +395,8 @@ class PatientDB():
         if meddra_roles:
             meddra_roles = ['SOC_text', 'HLGT_text',
                             'HLT_text', 'PT_text', 'concept_text']
-            # 'HLGT_CUI', 'HLT_CUI', 'PT_CUI', 'SOC_CUI', 'medID', 'PExperiencer', 'HLGT', 'HLT', 'PT', 'SOC']
+            # 'HLGT_CUI', 'HLT_CUI', 'PT_CUI', 'SOC_CUI', 'medID',
+            # 'PExperiencer', 'HLGT', 'HLT', 'PT', 'SOC']
             event_roles.update(meddra_roles)
 
         for event_type in event_types:
@@ -400,12 +502,14 @@ class PatientDB():
             elif visit_date >= max_visit_date:
                 max_visit_date = visit_date
 
-        start_visit_date = datetime(
-            min_visit_date.year, min_visit_date.month, 1)
-        end_visit_date = datetime(max_visit_date.year, max_visit_date.month, 1)
-        delta = timedelta()
-        #FIXME
-        #for visit_date in rrule.rrule(rrule.MONTHLY, dtstart=start_visit_date, until=end_visit_date):
+        #start_visit_date = \
+        # datetime(min_visit_date.year, min_visit_date.month, 1)
+        #end_visit_date = \
+        # datetime(max_visit_date.year, max_visit_date.month, 1)
+        #delta = timedelta()
+        ##FIXME
+        #for visit_date in rrule.rrule(rrule.MONTHLY, dtstart=start_visit_date,
+        # until=end_visit_date):
         #    print(visit_date)
         #import pdb;pdb.set_trace()
         return visit_dates
@@ -447,7 +551,7 @@ class PatientDB():
         return unique_genders
 
     def get_unique_ethnicities(self):
-        unique_ethniciites = set()
+        unique_ethnicities = set()
         for patient in self.patients.values():
             unique_ethnicities.add(patient.ethnicity)
         return unique_ethnicities
@@ -466,7 +570,9 @@ class PatientDB():
         # iterate through visit dates and create a patientDB per time step
         for visit_date in visit_dates:
             date_key = visit_date.strftime("%Y-%m")
-            visit_date_db = self.select_date(name=date_key, year=visit_date.year, month=visit_date.month)
+            visit_date_db = self.select_date(name=date_key,
+                                             year=visit_date.year,
+                                             month=visit_date.month)
             visit_date_dbs[date_key] = visit_date_db
 
         #import pdb;pdb.set_trace()
@@ -494,7 +600,7 @@ class PatientDB():
             gender_dbs[gender] = self.reproduce(name=gender)
         # Put patients in their respective gender dbs
         for patient in self.patients.values():
-            gender_dbs[patient.gender].add_patient(patient)
+            gender_dbs[patient.gender].merge_patient(patient)
         import pdb
         pdb.set_trace()
         return gender_dbs
@@ -507,10 +613,82 @@ class PatientDB():
             race_dbs[race] = self.reproduce(name=race)
         # Put patients in their respective race dbs
         for patient in self.patients.values():
-            race_dbs[patient.race].add_patient(patient)
+            race_dbs[patient.race].merge_patient(patient)
         import pdb
         pdb.set_trace()
         return race_dbs
+
+    def get_event_by_event_id(self,
+                              patient_id: str,
+                              event_id: str) -> Optional[Any]:
+        e = None
+        for event in self.events:
+            # We have found an event matching our criteria
+            if event.event_id == event_id:
+                e = event
+                # breaking at the first visit
+                break
+        return e
+
+    def get_visit_by_visit_id(self,
+                              patient_id: str,
+                              visit_id: str) -> Optional[Any]:
+        v = None
+        for visit in self.visits:
+            # We have found a vist matching our criteria
+            if visit.visit_id == visit_id:
+                v = visit
+                # breaking at the first visit
+                break
+        return v
+
+    def get_patient_by_patient_id(self, patient_id: str) -> Optional[Any]:
+        p = None
+        for patient in self.patients:
+            # We have found a patient matching our patient id
+            if patient.patient_id == patient_id:
+                p = patient
+                # breaking at the first patient
+                break
+        return p
+
+    def attach_events_to_visits(self):
+        c = Counter()
+
+        # Attach events to visits
+        for event in self.events:
+            try:
+                # FIXME, we dont have unique_visit_ids
+                visit: Visit = self.get_visit_by_visit_id(
+                    patient_id=event.patient_id,
+                    visit_id=event.visit_id)
+                visit.events.append(event)
+                c['successful_keys'] += 1
+            except KeyError:
+                import pdb
+                pdb.set_trace()
+                c['missing_keys'] += 1
+        print(f"Events, Num missing keys: {c['missing_keys']}\n"
+              f"Events, Num successful keys: {c['successful_keys']}")
+
+    def select_non_empty_patients(self, patient_ids: Set[str]) -> Set[int]:
+        """Filter out patients IDs with no events."""
+        non_empty_patient_ids = set()
+        for event in self.events:
+            patient_id = int(event.patient_id)
+            non_empty_patient_ids.add(patient_id)
+
+        # FIXME, is this necessary?
+        if not non_empty_patient_ids.issubset(patient_ids):
+            print("Non-empty patient IDs are not a subset of patient IDs")
+            import pdb
+            pdb.set_trace()
+        print(f"Before filtering out empty patients: {len(patient_ids)} "
+              f"patient IDs")
+        print(f"After filtering out empty patients: "
+              f"{len(non_empty_patient_ids)} patient IDs")
+
+        return non_empty_patient_ids
 
 
 def get_top_k(agg_counts, keys, roles, k):

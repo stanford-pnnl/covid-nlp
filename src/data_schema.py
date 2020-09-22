@@ -41,8 +41,7 @@ class EntityDecoder(JSONDecoder):
     def decode_patient(obj):
         """Decode a Patient obj."""
         date_of_birth_obj = date.fromisoformat(obj['date_of_birth'])
-        p = Patient(patient_embedding=obj['entity_embedding'],
-                    patient_id=obj['entity_id'],
+        p = Patient(patient_id=obj['patient_id'],
                     patient_adult=obj['adult'],
                     patient_age=obj['age'],
                     patient_date_of_birth=date_of_birth_obj,
@@ -57,29 +56,27 @@ class EntityDecoder(JSONDecoder):
     def decode_visit(obj):
         """Decode a Visit obj."""
         date_obj = datetime.fromisoformat(obj['date'])
-        v = Visit(date=date_obj,
-                  visit_embedding=obj['entity_embedding'],
-                  hadm_id=obj['hadm_id'],
-                  provenance=obj['provenance'])
+        v = Visit(visit_id=obj['visit_id'],
+                  patient_id=obj['patient_id'],
+                  date=date_obj)
         v.events.extend(obj['events'])
         return v
 
     @staticmethod
     def decode_event(obj):
         """Decode an Event obj."""
-        e = Event(event_embedding=obj['entity_embedding'],
-                  event_id=obj['entity_id'],
+        e = Event(event_id=obj['entity_id'],
+                  visit_id=obj['visit_id'],
+                  patient_id=obj['patient_id'],
                   chartdate=obj['chartdate'],
-                  provenance=obj['provenance'])
-        e.event_type = obj['event_type']
+                  event_type=obj['event_type'])
         e.roles = obj['roles']
         return e
 
     @staticmethod
     def decode_entity(obj):
         """Decode an Entity obj."""
-        e = Entity(entity_embedding=obj['entity_embedding'],
-                   entity_id=obj['entity_id'],
+        e = Entity(entity_id=obj['entity_id'],
                    entity_type=obj['entity_type'])
         return e
 
@@ -106,7 +103,6 @@ class EntityEncoder(JSONEncoder):
             '__type__': '__Patient__',
             'entity_type': obj.entity_type,
             'entity_id': obj.entity_id,
-            'entity_embedding': obj.entity_embedding,
             'adult': obj.adult,
             'age': obj.age,
             'date_of_birth': obj.date_of_birth.isoformat(),
@@ -123,10 +119,9 @@ class EntityEncoder(JSONEncoder):
             '__type__': '__Visit__',
             'entity_type': obj.entity_type,
             'entity_id': obj.entity_id,
-            'entity_embedding': obj.entity_embedding,
-            'hadm_id': obj.hadm_id,
+            'visit_id': obj.visit_id,
             'date': obj.date.isoformat(),
-            'provenance': obj.provenance,
+            'patient_id': obj.patient_id,
             'events': [self.default(e) for e in obj.events]
         }
 
@@ -137,10 +132,11 @@ class EntityEncoder(JSONEncoder):
             '__type__': '__Event__',
             'entity_type': obj.entity_type,
             'entity_id': obj.entity_id,
-            'entity_embedding': obj.entity_embedding,
+            'patient_id': obj.patient_id,
+            'visit_id': obj.visit_id,
+            'event_id': obj.event_id,
             'chartdate': obj.chartdate,
             'event_type': obj.event_type,
-            'provenance': obj.provenance,
             'roles': obj.roles
         }
 
@@ -151,17 +147,17 @@ class EntityEncoder(JSONEncoder):
             '__type__': '__Entity__',
             'entity_type': obj.entity_type,
             'entity_id': obj.entity_id,
-            'entity_embedding': obj.entity_embedding
         }
 
 
 class Entity():
     """Base entity class."""
 
-    def __init__(self, entity_embedding=None, entity_id: str = "",
+    def __init__(self,
+                 entity_id: str = "",
                  entity_type: str = ""):
         """Initialize the base class."""
-        self.entity_embedding = entity_embedding
+        # This entity id should only be changed by PatientDB
         self.entity_id: str = entity_id
         self.entity_type: str = entity_type
 
@@ -169,26 +165,38 @@ class Entity():
 class Event(Entity):
     """Event class."""
 
-    def __init__(self, event_embedding=None, event_id: str = "",
-                 chartdate: str = "", event_type: str = "",
-                 provenance: str = "", patient_id: str = ""):
+    def __init__(self,
+                 event_id: str = "",
+                 visit_id: str = "",
+                 patient_id: str = "",
+                 chartdate: str = "",
+                 event_type: str = ""):
         """Initialize Event."""
-        Entity.__init__(self, event_embedding, event_id, ETYPE_EVENT)
+        Entity.__init__(self, entity_type=ETYPE_EVENT)
+        # IDs
+        self.event_id: str = event_id
+        self.visit_id: str = visit_id
+        self.patient_id: str = patient_id
+
         # TODO: make chartdate a date object
         self.chartdate: str = chartdate
         self.event_type: str = event_type
-        self.provenance: str = provenance  # refers to parent Visit.hadm_id
-        self.patient_id: str = patient_id
         self.roles: Dict = {}
         # TODO add metadata source attributes
 
-    def patient_role(self, attribute: str, attribute_value: Any):
+    # FIXME, what is this used for?
+    def patient_role(self,
+                     attribute: str,
+                     attribute_value: Any):
         self.event_type = "PatientEvent"
         self.roles['attribute'] = attribute
         self.roles['attribute_value'] = attribute_value
 
-    def medication_role(self, dosage: str, duration: str,
-                        indication: str, medication: str):
+    def medication_role(self,
+                        dosage: str = '',
+                        duration: str = '',
+                        indication: str = '',
+                        medication: str = ''):
         """Medication event helper."""
         self.event_type = "MedicationEvent"
         self.roles['dosage'] = dosage
@@ -196,35 +204,82 @@ class Event(Entity):
         self.roles['indication'] = indication
         self.roles['medication'] = medication
 
-    def diagnosis_role(self, diagnosis_icd9: str, diagnosis_name: str,
-                       diagnosis_long_name: str):
+    def diagnosis_role(self,
+                       diagnosis_icd9: str = '',
+                       diagnosis_name: str = '',
+                       diagnosis_long_name: str = ''):
         """Diagnosis event helper."""
         self.event_type = "DiagnosisEvent"
         self.roles['diagnosis_icd9'] = diagnosis_icd9
         self.roles['diagnosis_name'] = diagnosis_name
         self.roles['diagnosis_long_name'] = diagnosis_long_name
 
-    def procedure_role(self, procedure_icd9: str, procedure_name: str,
-                       targeted_organs: List[str]):
+    def procedure_role(self,
+                       procedure_icd9: str = '',
+                       procedure_name: str = '',
+                       targeted_organs: List[str] = None):
         """Procedure event helper."""
+        #FIXME, more elegant way to handle this?
+        if not targeted_organs:
+            targeted_organs = []
         self.event_type = "ProcedureEvent"
         self.roles['procedure_icd9'] = procedure_icd9
         self.roles['procedure_name'] = procedure_name
         self.roles['targeted_organs'] = targeted_organs
 
-    def lab_role(self, test_name: str, test_value: str, test_status: str):
+    def lab_role(self,
+                 test_name: str = '',
+                 test_value: str = '',
+                 test_status: str = ''):
         """Lab event helper."""
         self.event_type = "LabEvent"
         self.roles['test_name'] = test_name
         self.roles['test_status'] = test_status
         self.roles['test_value'] = test_value
 
-    def vital_role(self, location: str, vital_outcome: str):
+    def vital_role(self,
+                   location: str = '',
+                   vital_outcome: str = ''):
         """Vital event helper."""
         self.event_type = "VitalEvent"
         self.roles['location'] = location
         # vital_outcome = ("ALIVE" | "DEAD")
         self.roles['vital_outcome'] = vital_outcome
+
+    def meddra_role(self, row):
+        self.event_type = "MEDDRAEvent"
+        self.add_meddra_roles(row)
+
+    def add_meddra_roles(self, row):
+        # Meddra levels
+        self.roles['SOC'] = row.SOC
+        self.roles['HLGT'] = row.HLGT
+        self.roles['HLT'] = row.HLT
+        self.roles['PT'] = row.PT
+
+        # Meddra CUI levels
+        self.roles['SOC_CUI'] = row.SOC_CUI
+        self.roles['HLGT_CUI'] = row.HLGT_CUI
+        self.roles['HLT_CUI'] = row.HLT_CUI
+        self.roles['PT_CUI'] = row.PT_CUI
+        self.roles['extracted_CUI'] = row.extracted_CUI
+
+        # Meddra text levels
+        self.roles['SOC_text'] = row.SOC_text
+        self.roles['HLGT_text'] = row.HLGT_text
+        self.roles['HLT_text'] = row.HLT_text
+        self.roles['PT_text'] = row.PT_text
+        self.roles['concept_text'] = row.concept_text
+
+        # Everything else (not adding date twice)
+        self.roles['PExperiencer'] = row.PExperiencer
+        self.roles['medID'] = row.medID
+        self.roles['note_id'] = row.note_id
+        self.roles['note_title'] = row.note_title
+        self.roles['polarity'] = row.polarity
+        self.roles['pos'] = row.pos
+        self.roles['present'] = row.present
+        self.roles['ttype'] = row.ttype
 
     # broken FIXME
     def __eq__(self, other):
@@ -260,16 +315,16 @@ class Event(Entity):
 class Visit(Entity):
     """Visit class."""
 
-    def __init__(self, date, visit_embedding=None, hadm_id: str = "",
-                 provenance: str = "", patient_id: str = ""):
+    def __init__(self,
+                 date: str = None,
+                 visit_id: str = "",
+                 patient_id: str = ""):
         """Initialize Visit."""
-        Entity.__init__(self, visit_embedding, hadm_id, ETYPE_VISIT)
-        self.hadm_id: str = hadm_id
+        Entity.__init__(self, entity_type=ETYPE_VISIT)
+        self.visit_id: str = visit_id
+        self.patient_id: str = patient_id
         # TODO: make sure date is a datetime obj
         self.date = date
-        # refers to parent Patient.patient_id
-        self.provenance: str = provenance
-        self.patient_id: str = patient_id
         self.events: List[Event] = []
 
     def num_events(self):
@@ -310,7 +365,6 @@ class Patient(Entity):
     """Patient/Pt/Subject class."""
 
     def __init__(self,
-                 patient_embedding=None,
                  patient_id: str = "",
                  patient_age: Any = None,
                  patient_date_of_birth: date = None,
@@ -320,7 +374,8 @@ class Patient(Entity):
                  patient_adult: bool = False,
                  patient_smoker: bool = False):
         """Initialize Patient."""
-        Entity.__init__(self, patient_embedding, patient_id, ETYPE_PATIENT)
+        Entity.__init__(self, entity_type=ETYPE_PATIENT)
+        self.patient_id: str = patient_id
         self.adult: bool = patient_adult
         self.age: Any = patient_age
         self.date_of_birth: Optional[date] = patient_date_of_birth
@@ -328,7 +383,7 @@ class Patient(Entity):
         self.gender: str = patient_gender
         self.race: str = patient_race
         self.smoker: bool = patient_smoker
-        self.birth_datetime = None
+        #self.birth_datetime = None
 
         # TODO, make sure visits are unique
         self.visits: List[Visit] = []

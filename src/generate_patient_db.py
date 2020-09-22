@@ -21,6 +21,7 @@ from tqdm import tqdm
 from data_schema import EntityEncoder, Event, Patient, Visit
 from patient_db import PatientDB
 
+
 def get_df(path, use_dask):
     if use_dask:
         df = dd.read_parquet(path, engine='pyarrow')
@@ -62,15 +63,6 @@ def get_patient_ids(df, use_dask=False):
     return unique_patient_ids
 
 
-
-def generate_path_with_time(path: str, extension: str) -> str:
-    """Generate path string with time included."""
-    timestr = time.strftime("%Y%m%d-%H%M%S")
-    time_path = f"{path}_{timestr}.{extension}"
-
-    return time_path
-
-
 def get_distinct_column_values(df, output_dir, keys, use_dask=False):
     print("Getting distinct values from columns and dumping to files")
     for key in sorted(keys):
@@ -101,7 +93,10 @@ def get_distinct_column_values(df, output_dir, keys, use_dask=False):
                 f.write(f"{distinct_column_value}\n")
 
 
-def get_diagnosis_events_depression(events, event_cnt, row, date, patient_id):
+def get_diagnosis_events_depression(patients: PatientDB,
+                                    row,
+                                    date_str,
+                                    patient_id):
     concept_text_depression = [
         'Anxious depression',
         'Bipolar depression',
@@ -141,21 +136,24 @@ def get_diagnosis_events_depression(events, event_cnt, row, date, patient_id):
 
     # If we find a depression diagnosis event, create it
     if depression_diagnosis_event_found:
-        event_cnt['id'] += 1
-        event_cnt['diagnosis'] += 1
-        event_cnt['diagnosis_depression'] += 1
+        # Create a basic event
         depression_diagnosis_event = Event(
-            chartdate=date, provenance=date, event_id=event_cnt['id'],
+            chartdate=date_str,
+            visit_id=date_str,
             patient_id=patient_id)
+        # Add diagnosis attributes
         depression_diagnosis_event.diagnosis_role(
-            diagnosis_icd9='', diagnosis_name='Depression',
+            diagnosis_name='Depression',
             diagnosis_long_name=diagnosis_long_name)
-        add_meddra_roles(depression_diagnosis_event, row)
-        events[str(event_cnt['id'])] = depression_diagnosis_event
+        # Add MEDDRA attributes
+        depression_diagnosis_event.add_meddra_roles(row)
+        patients.add_event(depression_diagnosis_event)
 
     return depression_diagnosis_event_found
 
-def get_diagnosis_events_anxiety(events, event_cnt, row, date, patient_id):
+
+def get_diagnosis_events_anxiety(patients: PatientDB, row, date_str,
+                                 patient_id):
     concept_text_anxiety = [
         'Adjustment disorder with anxiety',
         'Chronic anxiety',
@@ -194,22 +192,19 @@ def get_diagnosis_events_anxiety(events, event_cnt, row, date, patient_id):
 
     # If we find an anxiety diagnosis event, create it
     if anxiety_diagnosis_event_found:
-        event_cnt['id'] += 1
-        event_cnt['diagnosis'] += 1
-        event_cnt['diagnosis_anxiety'] += 1
-        anxiety_diagnosis_event = Event(
-            chartdate=date, provenance=date, event_id=event_cnt['id'],
-            patient_id=patient_id)
+        anxiety_diagnosis_event = Event(chartdate=date_str, visit_id=date_str,
+                                        patient_id=patient_id)
         anxiety_diagnosis_event.diagnosis_role(
-            diagnosis_icd9='', diagnosis_name='Anxiety',
-            diagnosis_long_name=diagnosis_long_name)
-        add_meddra_roles(anxiety_diagnosis_event, row)
-        events[str(event_cnt['id'])] = anxiety_diagnosis_event
+            diagnosis_name='Anxiety', diagnosis_long_name=diagnosis_long_name)
+        anxiety_diagnosis_event.add_meddra_roles(row)
+
+        patients.add_event(anxiety_diagnosis_event)
+
     return anxiety_diagnosis_event_found
-# TODO match with ability to define meddra level matches
 
 
-def get_diagnosis_events_insomnia(events, event_cnt, row, date, patient_id):
+def get_diagnosis_events_insomnia(patients: PatientDB, row, date_str,
+                                  patient_id):
     concept_text_insomnia = [
         'Behavorial insomnia of childhood'
         'Chronic insomnia',
@@ -242,20 +237,21 @@ def get_diagnosis_events_insomnia(events, event_cnt, row, date, patient_id):
 
     # If we find an insomnia diagnosis event, create it
     if insomnia_diagnosis_event_found:
-        event_cnt['id'] += 1
-        event_cnt['diagnosis'] += 1
-        event_cnt['diagnosis_insomnia'] += 1
-        insomnia_diagnosis_event = Event(
-            chartdate=date, provenance=date, event_id=event_cnt['id'],
-            patient_id=patient_id)
+        insomnia_diagnosis_event = \
+            Event(chartdate=date_str,
+                  visit_id=date_str,
+                  patient_id=patient_id)
         insomnia_diagnosis_event.diagnosis_role(
-            diagnosis_icd9='', diagnosis_name='Insomnia',
+            diagnosis_name='Insomnia',
             diagnosis_long_name=diagnosis_long_name)
-        add_meddra_roles(insomnia_diagnosis_event, row)
-        events[str(event_cnt['id'])] = insomnia_diagnosis_event
+        insomnia_diagnosis_event.add_meddra_roles(row)
+        patients.add_event(insomnia_diagnosis_event)
+
     return insomnia_diagnosis_event_found
 
-def get_diagnosis_events_distress(events, event_cnt, row, date, patient_id):
+
+def get_diagnosis_events_distress(patients: PatientDB, row, date_str,
+                                  patient_id):
     concept_text_distress = ['Emotional distress', 'emotional distress']
 
     PT_text_distress = ['Emotional distress']
@@ -273,57 +269,32 @@ def get_diagnosis_events_distress(events, event_cnt, row, date, patient_id):
 
     # If we find a distress diagnosis event, create it
     if distress_diagnosis_event_found:
-        event_cnt['id'] += 1
-        event_cnt['diagnosis'] += 1
-        event_cnt['diagnosis_distress'] += 1
-        distress_diagnosis_event = Event(
-            chartdate=date, provenance=date, event_id=event_cnt['id'],
-            patient_id=patient_id)
+        distress_diagnosis_event = \
+            Event(chartdate=date_str,
+                  visit_id=date_str,
+                  patient_id=patient_id)
         distress_diagnosis_event.diagnosis_role(
-            diagnosis_icd9='', diagnosis_name='Distress',
+            diagnosis_name='Distress',
             diagnosis_long_name=diagnosis_long_name)
-        add_meddra_roles(distress_diagnosis_event, row)
-        events[str(event_cnt['id'])] = distress_diagnosis_event
+        distress_diagnosis_event.add_meddra_roles(row)
+        patients.add_event(distress_diagnosis_event)
     return distress_diagnosis_event_found
 
-def format_date(date_obj):
+
+def format_date(date_obj) -> str:
     try:
-        date = date_obj.strftime('%Y-%m-%d')
+        date_str = date_obj.strftime('%Y-%m-%d')
     except AttributeError:
-        date = date_obj
-    return date
+        date_str = date_obj
+    return date_str
+
+# FIXME
 
 
-def add_meddra_roles(event, row):
-    # Meddra levels
-    event.roles['SOC'] = row.SOC
-    event.roles['HLGT'] = row.HLGT
-    event.roles['HLT'] = row.HLT
-    event.roles['PT'] = row.PT
+def format_date_str(date_str):
+    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+    return date_obj
 
-    # Meddra CUI levels
-    event.roles['SOC_CUI'] = row.SOC_CUI
-    event.roles['HLGT_CUI'] = row.HLGT_CUI
-    event.roles['HLT_CUI'] = row.HLT_CUI
-    event.roles['PT_CUI'] = row.PT_CUI
-    event.roles['extracted_CUI'] = row.extracted_CUI
-
-    # Meddra text levels
-    event.roles['SOC_text'] = row.SOC_text
-    event.roles['HLGT_text'] = row.HLGT_text
-    event.roles['HLT_text'] = row.HLT_text
-    event.roles['PT_text'] = row.PT_text
-    event.roles['concept_text'] = row.concept_text
-
-    # Everything else (not adding date twice)
-    event.roles['PExperiencer'] = row.PExperiencer
-    event.roles['medID'] = row.medID
-    event.roles['note_id'] = row.note_id
-    event.roles['note_title'] = row.note_title
-    event.roles['polarity'] = row.polarity
-    event.roles['pos'] = row.pos
-    event.roles['present'] = row.present
-    event.roles['ttype'] = row.ttype
 
 def count_column_values(row, counter):
     counter['HLGT'][row.HLGT] += 1
@@ -351,153 +322,82 @@ def count_column_values(row, counter):
     counter['present'][row.present] += 1
     counter['ttype'][row.ttype] += 1
 
-def get_diagnosis_events(events, event_cnt, df):
+
+def get_diagnosis_events(patients: PatientDB, df):
     print("Getting diagnosis events...")
-    columns = dict()
+    columns: Dict[str, Counter] = dict()
     column_names = df.columns.tolist()
     for column in column_names:
         columns[column] = Counter()
     print(df.head())
 
-    # See if you can find a generalizable way to iterate without using itterrows
+    # See if you can find a generalizable way to iterate without using
+    # itterrows
     # temporarily using to satisfy unkown columns addition to roles
-    
-    #FIXME, only look at 1000000 rows
-    rows_seen = 0
-    rows_seen_max = 100000
-    print(f"Limiting iteration of dataframe to a maximum of {rows_seen_max} rows")
-    for row in df.itertuples():
-        rows_seen += 1
-        if rows_seen % 10000 == 0:
-            print(f"Row: {rows_seen}/rows_seen_max")
-        if row_seen > row_seen_max:
+
+    # FIXME, only look at 1000000 rows
+    i_max = 100000
+    print(f"Limiting iteration of dataframe to a maximum of {i_max} rows")
+    for i, row in df.itertuples():
+        if i % 10000 == 0:
+            print(f"Tuple: {i}/{i_max}")
+        if i > i_max:
             break
         #import pdb;pdb.set_trace()
-        date = format_date(row.date)
+        date_str = format_date(row.date)
         patient_id = str(row.patid)
-        
+
         # Meddra column value counters
         #count_column_values(row, columns)
 
         # Check for different types of diagnosis events
-        found_depression = get_diagnosis_events_depression(events, event_cnt, row, date, patient_id)
-        found_anxiety = get_diagnosis_events_anxiety(events, event_cnt, row, date, patient_id)
-        found_insomnia = get_diagnosis_events_insomnia(events, event_cnt, row, date, patient_id)
-        found_distress = get_diagnosis_events_distress(events, event_cnt, row, date, patient_id)
+        found_depression = \
+            get_diagnosis_events_depression(
+                patients, row, date_str, patient_id)
+        found_anxiety = \
+            get_diagnosis_events_anxiety(patients, row, date_str, patient_id)
+        found_insomnia = \
+            get_diagnosis_events_insomnia(patients, row, date_str, patient_id)
+        found_distress = \
+            get_diagnosis_events_distress(patients, row, date_str, patient_id)
 
         # If we don't find a mental health symptom assume we have found
         # a diagnosis event/symptom without match
-        found_any_events = found_depression or found_anxiety or found_insomnia or found_distress
-        #FIXME
-        #found_any_events = False
+        found_any_events = \
+            any([found_depression,
+                 found_anxiety,
+                 found_insomnia,
+                 found_distress])
+
         if found_any_events:
             continue
-        # Add symptom event
-        event_cnt['id'] += 1
-        event_cnt['diagnosis'] += 1
-        event_cnt['diagnosis_symptom'] += 1
-        diagnosis_event = Event(chartdate=date, provenance=date, event_id=event_cnt['id'], patient_id=patient_id)
-        diagnosis_name = row.concept_text
-        diagnosis_long_name = row.concept_text
-        #FIXME, should I keep these attributes empty since there is no exact match?
-        diagnosis_event.diagnosis_role(diagnosis_icd9='', diagnosis_name='', diagnosis_long_name='')
-
-        # Add meddra items
-        add_meddra_roles(diagnosis_event, row)
-        events[str(event_cnt['id'])] = diagnosis_event
+        # Add meddra event
+        meddra_event = \
+            Event(chartdate=date_str, visit_id=date_str, patient_id=patient_id)
+        meddra_event.meddra_role(row)
+        patients.add_event(meddra_event)
 
     #print(f"columns: {columns}")
     #print("Top 10 diagnosis ")
     #import pdb;pdb.set_trace()
 
 
-def get_events(df):
+def get_events(patients: PatientDB, df):
     print("Getting events...")
-    event_cnt = Counter()
-    events = {}
     # Diagnosis Events
-    get_diagnosis_events(events, event_cnt, df)
-    print(f"Found {event_cnt['diagnosis']} diagnosis events")
-    print(f"Found {event_cnt['id']} total events")
-    print(f"{event_cnt}")
-    return events
+    get_diagnosis_events(patients, df)
 
 
-def get_patient_visits(df):
-    patient_visits = {}
+def get_patient_visits(patients: PatientDB, df):
     for row in df.itertuples():
         patient_id = str(row.patid)
-        # FIXME, currently using date as visit ID
-        visit_id = format_date(row.date)
-        if not visit_id:
-            continue  # skip if missing ID
-        if not patient_visits.get(patient_id, None):
-            patient_visits[patient_id] = set()
-        patient_visits[patient_id].add(visit_id)
-    return patient_visits
-
-
-def create_visits(
-        patient_visits: Dict[str, set]) -> Dict[str, Dict[str, Visit]]:
-    """Create visit objects."""
-    visits: Dict[str, Dict[str, Visit]] = {}
-    for patient_id, visit_set in patient_visits.items():
-        if not visits.get(patient_id):
-            visits[patient_id] = dict()
-        for hadm_id in visit_set:
-            date_str = hadm_id
-            date_object = datetime.strptime(date_str, "%Y-%m-%d")
-            visits[patient_id][hadm_id] = Visit(
-                date_object, hadm_id=hadm_id, provenance=patient_id,
-                patient_id=patient_id)
-    return visits
-
-
-def attach_events_to_visits(events: Dict[str, Event],
-                            visits: Dict[str, Dict[str, Visit]]):
-    num_missing_keys = 0
-    num_successful_keys = 0
-
-    # Attach events to visits
-    for event in events.values():
-        try:
-            # FIXME, we dont have unique_visit_ids
-            visits[event.patient_id][event.provenance].events.append(event)
-            num_successful_keys += 1
-        except KeyError:
-            import pdb
-            pdb.set_trace()
-            num_missing_keys += 1
-    print(f"Events, Num missing keys: {num_missing_keys}\n"
-          f"Events, Num successful keys: {num_successful_keys}")
-
-
-
-def select_non_empty_patients(patient_ids: Set[str],
-                              visits: Dict[str, Dict[str, Visit]]) -> Set[int]:
-    """Filter out patients IDs with no events"""
-    print(
-        f"Before filtering out empty patients: {len(patient_ids)} patient IDs")
-
-    non_empty_patient_ids = set()
-    for patient_id, patient_visits in visits.items():
-        for visit_id, visit in patient_visits.items():
-            if visit.events:
-                # TODO: should I get patient_id from visit or
-                # from key used to iter
-                visit_patient_id = int(visit.patient_id)
-                non_empty_patient_ids.add(visit_patient_id)
-
-    if not non_empty_patient_ids.issubset(patient_ids):
-        print("Non-empty patient IDs are not a subset of patient IDs")
-        import pdb
-        pdb.set_trace()
-
-    print(
-        f"After filtering out empty patients: {len(non_empty_patient_ids)} "
-        f"patient IDs")
-
-    return non_empty_patient_ids
+        # Skip if missing patient_id
+        if not patient_id:
+            continue
+        # FIXME, nothing is being used as visit_id
+        date_obj = format_date(row.date)
+        visit = Visit(date=date_obj, patient_id=patient_id)
+        patients.add_visit(visit)
 
 
 def get_all_patient_ids(demographics, extractions, use_dask):
@@ -513,32 +413,34 @@ def get_all_patient_ids(demographics, extractions, use_dask):
     patient_ids = set(patient_ids)
     print(f"len(patient_ids): {len(patient_ids)}")
     all_patient_ids.update(patient_ids)
-   
+
     print(f"len(all_patient_ids): {len(all_patient_ids)}")
     return all_patient_ids
 
 
 def main(args):
     # Setup variables
-    output_dir = 'output'
-    distinct_column_values_dir = f"{output_dir}/distinct_column_values"
+    #distinct_column_values_dir = f"{output_dir}/distinct_column_values"
     covid_data_dir = f"/share/pi/stamang/covid/data"
-    notes_2019_2020_dir = f"{covid_data_dir}/notes_20190901_20200701/labeled_extractions"
-    #notes_2018_2019_dir = f"{covid_data_dir}/notes_20180901_20190701/extracted_notes"
 
-    notes_2019_2020_paths = f"{notes_2019_2020_dir}/all_POS_batch000_099.parquet"
-    #notes_2018_2019_paths = f"{notes_2018_2019_dir}/extracted_notes_batch*.parquet"
+    notes_2019_2020_dir = \
+        f"{covid_data_dir}/notes_20190901_20200701/labeled_extractions"
+    #notes_2018_2019_dir = \
+    # f"{covid_data_dir}/notes_20180901_20190701/extracted_notes"
 
-    # Generate patient dump path
-    patients_dump_path = f"{args.output_dir}/patients"
-    patients_dump_path_unique = generate_path_with_time(
-        path=patients_dump_path, extension='jsonl')
+    notes_2019_2020_paths = \
+        f"{notes_2019_2020_dir}/all_POS_batch000_099.parquet"
+    #notes_2018_2019_paths = \
+    # f"{notes_2018_2019_dir}/extracted_notes_batch*.parquet"
 
     #path_pattern = f"{notes_2018_2019_dir}/extracted_notes_batch00*.parquet"
     path_pattern = notes_2019_2020_paths
     print(f"path_pattern: {path_pattern}")
-
     print(f"use_dask: {args.use_dask}")
+    print(f"{args}")
+
+    # Create patient DB to store data
+    patients = PatientDB(name='all')
 
     # Get demographics dataframe
     demographics_path = f"{covid_data_dir}/demo/demo_all_pts.parquet"
@@ -550,47 +452,46 @@ def main(args):
     columns = sorted(meddra_extractions.columns.tolist())
     print(f"Dataframe column names:\n\t{columns}")
 
-    
-    patient_ids = get_all_patient_ids(demographics, meddra_extractions, args.use_dask)
+    patient_ids = get_all_patient_ids(demographics,
+                                      meddra_extractions,
+                                      args.use_dask)
 
-    events = get_events(meddra_extractions)
-    if not events:
+    get_events(patients, meddra_extractions)
+    if not patients['events']:
         print("Empty events dict! Exiting...")
         sys.exit(0)
-    print(f"Found {len(events.values())} events values")
+    print(f"Found {patients.num_events()} events")
 
     # Get patient visits
-    patient_visits = get_patient_visits(meddra_extractions)
-
-    # Create visit objects
-    visits = create_visits(patient_visits)
-    print(f"len(visits): {len(visits)}")
+    get_patient_visits(patients, meddra_extractions)
 
     # Attach events to visits
-    attach_events_to_visits(events, visits)
+    patients.attach_events_to_visits(patients)
 
     # Filter out patient IDs that don't have any visits
-    patient_ids = select_non_empty_patients(patient_ids, visits)
+    patient_ids = patients.select_non_empty_patients(patient_ids)
 
-    patients = PatientDB(name='non_empty')
     # Generate patients from IDs
     patients.generate_patients_from_ids(patient_ids)
-    import pdb;pdb.set_trace()
+    import pdb
+    pdb.set_trace()
 
     # Attach demographic information to patients
     patients.add_demographic_info(demographics, args.use_dask)
-    import pdb;pdb.set_trace()
+    import pdb
+    pdb.set_trace()
 
     # Attach visits to patients
-    patients.attach_visits_to_patients(visits, patient_ids)
-    import pdb;pdb.set_trace()
+    patients.attach_visits_to_patients(patient_ids)
+    import pdb
+    pdb.set_trace()
 
-    try:
-        # Dump patients to a file
-        patients.dump(patients_dump_path_unique)
-    except:
-        pass
-    import pdb;pdb.set_trace()
+    # Dump patients to a file
+    patients.dump(args.output_dir, "patients", "jsonl", unique=True)
+
+    import pdb
+    pdb.set_trace()
+    print()
 
 
 if __name__ == '__main__':

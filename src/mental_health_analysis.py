@@ -51,6 +51,7 @@ def mental_health_co_morbidities(patients, search_terms):
                 print(f"\tkey: {key}\n{values_str}")
     #import pdb;pdb.set_trace()
 
+
 def test_split_by_month(patients):
     print('Test split patient DB by monthly frequency key')
     monthly_splits = patients.agg_time(time_freq='M')
@@ -60,22 +61,28 @@ def test_split_by_month(patients):
 
 def mental_health_age_distribution(patients, search_terms, output_dir):
     all_patients_age_dist_path = f"{output_dir}/all_patients_age_dist.png"
-    matched_patients_age_dist_path = f"{output_dir}/matched_patients_age_dist.png"
+    matched_patients_age_dist_path = \
+        f"{output_dir}/matched_patients_age_dist.png"
 
     # Match patients based on search terms
     matched_patients, matches = match_terms(patients, search_terms)
-   
+
     compare_date = date.today()
     # Calulate age distribution from input patients DB
     min_age, max_age = patients.calculate_patient_ages(compare_date)
-    patients.calculate_age_gender_distribution(min_age, max_age, patients.genders(), all_patients_age_dist_path)
+    patients.calculate_age_gender_distribution(
+        min_age, max_age, patients.genders(), all_patients_age_dist_path)
     print(f"input patients: min_age: {min_age}, max_age: {max_age}")
-    
+
     # Calculate age distribution from matched patients DB
     min_age, max_age = matched_patients.calculate_patient_ages(compare_date)
-    matched_patients.calculate_age_gender_distribution(min_age, max_age, matched_patients.genders(), matched_patients_age_dist_path)
+    matched_patients.calculate_age_gender_distribution(
+        min_age, max_age, matched_patients.genders(),
+        matched_patients_age_dist_path)
     print(f"matched patients: min_age: {min_age}, max_age: {max_age}")
-    import pdb;pdb.set_trace()
+    import pdb
+    pdb.set_trace()
+
 
 def main(args):
     print("START OF PROGRAM\n")
@@ -85,12 +92,13 @@ def main(args):
 
     print("\nQuestion 1:")
     question_one_terms = ['Depression', 'Anxiety', 'Insomnia', 'Distress']
-    answer_one = mental_health_co_morbidities(patients, question_one_terms)
+    mental_health_co_morbidities(patients, question_one_terms)
 
     # Q2
     print("\nQuestion 2:")
     question_two_terms = question_one_terms
-    mental_health_age_distribution(patients, question_two_terms, args.output_dir)
+    mental_health_age_distribution(patients, question_two_terms,
+                                   args.output_dir)
 
     # Q3
     #question_three_terms = question_one_terms
@@ -101,7 +109,10 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--patient_db_path',
-                        help='Path to load patient_db dump from', required=True)
-    parser.add_argument('--output_dir', help='Output dir to dump results', required=True)
+                        help='Path to load patient_db dump from',
+                        required=True)
+    parser.add_argument('--output_dir',
+                        help='Output dir to dump results',
+                        required=True)
     args: argparse.Namespace = parser.parse_args()
     main(args)
