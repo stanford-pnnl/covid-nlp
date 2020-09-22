@@ -99,13 +99,17 @@ class EntityEncoder(JSONEncoder):
 
     def encode_patient(self, obj):
         """Encode a Patient obj."""
+        try:
+            date_of_birth_str = obj.date_of_birth.isoformat()
+        except AttributeError:
+            date_of_birth_str = ''
         return {
             '__type__': '__Patient__',
             'entity_type': obj.entity_type,
             'entity_id': obj.entity_id,
             'adult': obj.adult,
             'age': obj.age,
-            'date_of_birth': obj.date_of_birth.isoformat(),
+            'date_of_birth': date_of_birth_str,
             'ethnicity': obj.ethnicity,
             'gender': obj.gender,
             'race': obj.race,

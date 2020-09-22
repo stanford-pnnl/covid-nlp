@@ -69,7 +69,10 @@ class PatientDB():
         with open(output_path, 'w') as f:
             for key in sorted(self.data['patients'].keys(), key=int):
                 c['num_keys'] += 1
-                patient = self.get_patient(key)
+                patient = self.data['patients'].get(key)
+                if not patient:
+                    import pdb;pdb.set_trace()
+                    continue
                 try:
                     patient_dump = json.dumps(patient, cls=EntityEncoder)
                     f.write(f"{patient_dump}\n")
@@ -120,7 +123,7 @@ class PatientDB():
         return gender_counter
 
     def get_patient(self, patient_id):
-        return self.data['patient'].get(patient_id)
+        return self.data['patients'].get(patient_id)
 
     def generate_patients_from_ids(self, patient_ids):
         """Generate patients from list of IDs."""
@@ -142,7 +145,10 @@ class PatientDB():
     def max_entity_key(self, entity):
         events_keys = self.data[entity].keys()
         events_keys = [int(x) for x in events_keys]
-        max_events_key = max(events_keys)
+        max_events_key = 0
+        if events_keys:
+            max_events_key = max(events_keys)
+        max_events_keys = str(max_events_key)
         return max_events_key
 
     def find_empty_entity_key(self, entity) -> str:
@@ -169,6 +175,7 @@ class PatientDB():
 
     def add_visit(self, visit: Visit, entity_id: str = None):
         if not entity_id:
+            # FIXME, seems slow
             entity_id = self.find_empty_entity_key('visits')
         visit.entity_id = entity_id
         self.data['visits'][entity_id] = visit
@@ -211,7 +218,7 @@ class PatientDB():
         matched_patients = self.reproduce(name=name)
         # Add matched patients to matched_patients PatientDB
         for match in matches:
-            patient = self.get_patient(match.patient_id)
+            patient = self.get_patient_by_patient_id(match.patient_id)
             matched_patients.add_patient(patient)
         return matched_patients, matches
 
@@ -242,6 +249,15 @@ class PatientDB():
             patient = patients.patients[patient_id]
             self.merge_patient(patient)
 
+    def find_patient_by_patient_id(self, patient_id: str):
+        p = None
+        for patient in self.patients:
+            if patient.patient_id == patient_id:
+                # We have found a patient
+                p = patient
+                break
+        return p
+
     def add_demographic_info(self, demographics, use_dask):
         print("Adding demographic info")
         c = Counter()
@@ -251,14 +267,14 @@ class PatientDB():
             person_id = row.person_id
             person_id_key = str(person_id)
             # Does this person exist in the patient DB already?
-            if not self.data.get(person_id_key):
+            patient = self.find_patient_by_patient_id(person_id_key)
+            if not patient:
                 #import pdb;pdb.set_trace()
-                #print(f"Not finding {person_id_key} in patients dict")
-                c['patients_not_found'] += 1
+                #print(f"Not finding {person_id_key} in patients PatientDB")
+                c['fail_patients_not_found'] += 1
                 continue
 
-            c['patients_found'] += 1
-            patient = self.data[person_id_key]
+            c['success_add_demographics'] += 1
             patient.date_of_birth = date(
                 row.year_of_birth, row.month_of_birth, row.day_of_birth)
             patient.gender = row.gender

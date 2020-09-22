@@ -17,12 +17,13 @@ import numpy as np
 import pandas as pd
 import pyarrow
 from tqdm import tqdm
+from itertools import product
 
 from data_schema import EntityEncoder, Event, Patient, Visit
 from patient_db import PatientDB
 
 
-def get_df(path, use_dask):
+def get_df(path, use_dask=False):
     if use_dask:
         df = dd.read_parquet(path, engine='pyarrow')
     else:
@@ -62,6 +63,17 @@ def get_patient_ids(df, use_dask=False):
     print(f"Found {nunique_patient_ids} patient IDs")
     return unique_patient_ids
 
+def get_dates(df, use_dask=False):
+    unique_dates = df.date.unique()
+    if use_dask:
+        unique_dates = unique_dates.compute()
+
+    nunique_dates = df.date.nunique()
+    if use_dask:
+        nunique_dates = nunique_dates.compute()
+
+    print(f"Found {nunique_dates} dates")
+    return unique_dates
 
 def get_distinct_column_values(df, output_dir, keys, use_dask=False):
     print("Getting distinct values from columns and dumping to files")
@@ -336,10 +348,10 @@ def get_diagnosis_events(patients: PatientDB, df):
     # temporarily using to satisfy unkown columns addition to roles
 
     # FIXME, only look at 1000000 rows
-    i_max = 100000
+    i_max = 10000
     print(f"Limiting iteration of dataframe to a maximum of {i_max} rows")
-    for i, row in df.itertuples():
-        if i % 10000 == 0:
+    for i, row in enumerate(df.itertuples()):
+        if i % 1000 == 0:
             print(f"Tuple: {i}/{i_max}")
         if i > i_max:
             break
@@ -388,16 +400,44 @@ def get_events(patients: PatientDB, df):
     get_diagnosis_events(patients, df)
 
 
-def get_patient_visits(patients: PatientDB, df):
+def create_patient_visits(patients: PatientDB, patient_visit_dates):
+    for patient_id, visit_id, date_str in patient_visit_dates:
+        
+        visit = Visit(patient_id=patient_id, visit_id=visit_id, date=date_str)
+        entity_id = patients.num_visits()
+        patients.add_visit(visit, entity_id=entity_id)
+
+def create_patient_visit_dates(patient_ids, date_strs):
+    print('Creating patient visit dates')
+    print(f"len(patient_ids): {len(patient_ids)}")
+    print(f"len(date_str): {len(date_strs)}")
+    patient_visit_dates = list()
+    for patient_id in patient_ids:
+        for date_str in date_strs:
+            visit_id = date_str
+            date_obj = format_date_str(date_str)
+            v = (patient_id, visit_id, date_obj)
+            patient_visit_dates.append(v)
+
+    return patient_visit_dates
+
+def get_patient_visit_dates(patients: PatientDB, df):
+    patient_visit_dates = set()
     for row in df.itertuples():
         patient_id = str(row.patid)
-        # Skip if missing patient_id
+        # Skip f missing patient_id
         if not patient_id:
             continue
-        # FIXME, nothing is being used as visit_id
-        date_obj = format_date(row.date)
-        visit = Visit(date=date_obj, patient_id=patient_id)
-        patients.add_visit(visit)
+        date_str = format_date(row.date)
+        visit_id = date_str
+        visit = (patient_id, visit_id, date_str)
+        patient_visit_dates.add(visit)
+    return patient_visit_dates
+
+def get_all_patient_visit_dates(patients: PatientDB, df):
+    patient_visit_dates = get_patient_visit_dates(patients, df)
+    print(f'Found {len(patient_visit_dates)} patient,visit,date tuples')
+    return patient_visit_dates
 
 
 def get_all_patient_ids(demographics, extractions, use_dask):
@@ -436,8 +476,7 @@ def main(args):
     #path_pattern = f"{notes_2018_2019_dir}/extracted_notes_batch00*.parquet"
     path_pattern = notes_2019_2020_paths
     print(f"path_pattern: {path_pattern}")
-    print(f"use_dask: {args.use_dask}")
-    print(f"{args}")
+    print(f"args: {args}")
 
     # Create patient DB to store data
     patients = PatientDB(name='all')
@@ -457,36 +496,43 @@ def main(args):
                                       args.use_dask)
 
     get_events(patients, meddra_extractions)
-    if not patients['events']:
+    if not patients.data['events']:
         print("Empty events dict! Exiting...")
         sys.exit(0)
     print(f"Found {patients.num_events()} events")
-
-    # Get patient visits
-    get_patient_visits(patients, meddra_extractions)
-
-    # Attach events to visits
-    patients.attach_events_to_visits(patients)
-
-    # Filter out patient IDs that don't have any visits
+    
+    print("Filter out patient IDs that don't have any events")
     patient_ids = patients.select_non_empty_patients(patient_ids)
 
-    # Generate patients from IDs
+    print('Get all patient visit dates...')
+    #patient_visit_dates = get_all_patient_visit_dates(patients, meddra_extractions)
+    unique_dates = get_dates(meddra_extractions, args.use_dask)
+    unique_date_strs = [format_date(d) for d in unique_dates]
+    patient_visit_dates = create_patient_visit_dates(patient_ids, unique_date_strs)
+
+    print('Creating patient visits...')
+    create_patient_visits(patients, patient_visit_dates)
+
+    # FIXME
+    print('Attach events to visits...')
+    patients.attach_events_to_visits()
+
+    print('Generate patients from IDs')
     patients.generate_patients_from_ids(patient_ids)
     import pdb
     pdb.set_trace()
 
-    # Attach demographic information to patients
+    print('Attach demographic information to patients')
     patients.add_demographic_info(demographics, args.use_dask)
     import pdb
     pdb.set_trace()
 
-    # Attach visits to patients
+    print('Attach visits to patients')
     patients.attach_visits_to_patients(patient_ids)
     import pdb
     pdb.set_trace()
 
-    # Dump patients to a file
+    print('Dump patients to a file')
     patients.dump(args.output_dir, "patients", "jsonl", unique=True)
 
     import pdb
