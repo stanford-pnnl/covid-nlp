@@ -36,7 +36,7 @@ class PatientDB():
         s += f"num_patients: {self.num_patients()}, "
         s += f"num_visits: {self.num_visits()}, "
         s += f"num_events: {self.num_events()}, "
-        s += f"gender_info: {self.gender_info()}"
+        s += f"gender_counts: {self.gender_counts()}"
         return s
 
     def reproduce(self, name=''):
@@ -110,13 +110,7 @@ class PatientDB():
             num_events += patient.num_events()
         return num_events
 
-    def genders(self):
-        genders = set()
-        for patient in self.patients.values():
-            genders.add(patient.gender)
-        return genders
-
-    def get_gender_info(self):
+    def gender_counts(self):
         gender_counter = Counter()
         for patient in self.patients:
             gender_counter[patient.gender] += 1
@@ -132,15 +126,16 @@ class PatientDB():
             patient = Patient(patient_id=str(patient_id))
             self.add_patient(patient)
 
-    def merge_patient(self, patient):
-        patient_id = patient.patient_id
+    def merge_patient(self, patient_orig):
+        patient_id = patient_orig.patient_id
         patient = self.get_patient_by_patient_id(patient_id)
-        entity_id = None
         if patient:
             entity_id = patient.entity_id
             print(f"Overwriting patient {patient_id} "
                   f"w/ entity_id: {entity_id}")
-        self.add_patient(patient, entity_id=entity_id)
+        else:
+            entity_id = None
+        self.add_patient(patient_orig, entity_id=entity_id)
 
     def max_entity_key(self, entity):
         events_keys = self.data[entity].keys()
@@ -199,13 +194,13 @@ class PatientDB():
 
         # Search all patients
         for patient in self.patients:
-            patient_id = patient.entity_id
+            patient_id = patient.patient_id
             # Search all patient visits
             for visit in patient.visits:
-                visit_id = visit.entity_id
+                visit_id = visit.visit_id
                 # Search all patient events
                 for event in visit.events:
-                    event_id = event.entity_id
+                    event_id = event.event_id
                     if event.event_type not in event_types:
                         continue
                     for key in event_keys:
@@ -244,9 +239,7 @@ class PatientDB():
     def merge_patients(self, patients):
         #print(f"Merging patient DBs...")
         # TODO: make graceful
-        patient_ids = list(patients.patients.keys())
-        for patient_id in patient_ids:
-            patient = patients.patients[patient_id]
+        for patient in patients.patients:
             self.merge_patient(patient)
 
     def find_patient_by_patient_id(self, patient_id: str):
@@ -285,9 +278,13 @@ class PatientDB():
     def calculate_patient_ages(self, compare_date):
         max_age = 0
         min_age = 9999
-        for patient in self.patients.values():
+        for patient in self.patients:
             # We can't calculate patient ages w/o dob
+            
             if not patient.date_of_birth:
+                # FIXME
+                patient.age = -1
+                min_age = -1
                 continue
             dob = patient.date_of_birth
             age = compare_date - dob
@@ -312,7 +309,7 @@ class PatientDB():
         return min_age, max_age
 
     def calulcate_patient_is_adult(self):
-        for patient in self.patients.values():
+        for patient in self.patients:
             if not patient.age:
                 continue
             if patient.age >= 18:
@@ -328,11 +325,10 @@ class PatientDB():
         age_range = range(min_age, max_age + 1)
         ages = dict()
         #ages['all'] = []
-        for gender in genders:
-            ages[gender] = []
-        for patient in self.patients.values():
+        #for gender in genders:
+        #    ages[gender] = []
+        for patient in self.patients:
             success_counter['total_patients'] += 1
-
             if not patient.age:
                 success_counter['patients_without_age'] += 1
                 continue
@@ -345,14 +341,21 @@ class PatientDB():
                 continue
             else:
                 success_counter['patients_with_gender'] += 1
-            ages[gender].append(patient.age)
+            if not ages.get(patient.gender):
+                ages[patient.gender] = []
+            ages[patient.gender].append(patient.age)
         print(f"age_counter: {age_counter}")
         print(f"success_counter: {success_counter}")
         ages_bins = list(age_range)
         sorted_gender_keys = sorted(ages.keys())
         np_ages = dict()
-        for ages_key in ages:
-            np_ages[ages_key] = np.array(ages[ages_key])
+
+        for gender in sorted_gender_keys:
+            np_ages[gender] = dict()
+            np_ages[gender] = np.array(ages[gender])
+        
+        #FIXME debug
+        #np_ages['MALE'] = np_ages['FEMALE']
         import pdb
         pdb.set_trace()
         self.plot_age_gender_distribution(path, np_ages, ages_bins,
@@ -371,20 +374,34 @@ class PatientDB():
             color_index += 1
             legend[gender] = color
         return r_ages, colors, legend
+
+    def get_n_colors(self, n):
+        base_colors = ['b', 'g', 'r', 'c', 'm', 'y']
+        tableau_colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
+        avail_colors = tableau_colors
+        colors = []
+        for i in range(n):
+            avail_color = avail_colors.pop()
+            colors.append(avail_color)
+        return colors
             
     def plot_age_gender_distribution(self, path, ages, ages_bins, legend):
         print("Plotting age distribution...")
         fig, ax = plt.subplots()
         # FIXME for generalized genders
         #age_arrays, colors, labels = self.get_age_colors_legend(ages)
-        colors = ['red', 'blue']
+        gender_keys = sorted(ages.keys())
+        n_genders = len(gender_keys)
+        colors = self.get_n_colors(n_genders)
         legend = dict()
-        legend['FEMALE'] = "red"
-        legend['MALE'] = "blue"
+        values = list()
+        for color_i, gender in enumerate(gender_keys):
+            legend[gender] = colors[color_i]
+            values.append(ages[gender])
         import pdb
         pdb.set_trace()
         ax.hist(
-            [ages['FEMALE'], ages['MALE']],
+            values,
             bins=ages_bins,
             density=True,
             histtype='bar',
@@ -398,7 +415,7 @@ class PatientDB():
 
     def get_stats(self):
         total_num_visits = 0
-        for patient_id, patient in self.patients.items():
+        for patient_id, patient in self.data['patients'].items():
             num_visits = len(patient.visits)
             total_num_visits += num_visits
         stats = dict()
@@ -461,7 +478,7 @@ class PatientDB():
         # Point out that items sets are temp
 
         # Iterate through all patients
-        for patient in self.patients.values():
+        for patient in self.patients:
             # Clear patient items set
             for role in event_roles:
                 patient_items[role].clear()
@@ -506,7 +523,7 @@ class PatientDB():
 
     def get_visit_dates(self, time_freq='M'):
         visit_dates = set()
-        for patient_id, patient in self.patients.items():
+        for patient_id, patient in self.data['patients'].items():
             for visit in patient.visits:
                 visit_dates.add(visit.date)
         # Get range start and end values
@@ -535,7 +552,7 @@ class PatientDB():
         match_month = bool(month)
         match_day = bool(day)
         date_db = self.reproduce(name=name)
-        for patient_id, patient in self.patients.items():
+        for patient_id, patient in self.data['patients'].items():
             patient_match = False
             matched_visits = []
             for visit in patient.visits:
@@ -560,21 +577,21 @@ class PatientDB():
                 date_db.add_patient(matched_patient)
         return date_db
 
-    def get_unique_gender(self):
+    def get_unique_genders(self):
         unique_genders = set()
-        for patient in self.patients.values():
+        for patient in self.patients:
             unique_genders.add(patient.gender)
         return unique_genders
 
     def get_unique_ethnicities(self):
         unique_ethnicities = set()
-        for patient in self.patients.values():
+        for patient in self.patients:
             unique_ethnicities.add(patient.ethnicity)
         return unique_ethnicities
 
     def get_unique_races(self):
         unique_races = set()
-        for patient in self.patients.values():
+        for patient in self.patients:
             unique_races.add(patient.race)
         return unique_races
 
@@ -601,7 +618,7 @@ class PatientDB():
         for ethnicity in unique_ethnicities:
             ethnicity_dbs[ethnicity] = self.reproduce(name=ethnicity)
         # Put patients in their respective ethnicity dbs
-        for patient in self.patients.values():
+        for patient in self.patients:
             ethnicity_dbs[patient.ethnicity].add_patient(patient)
 
         import pdb
@@ -615,7 +632,7 @@ class PatientDB():
         for gender in unique_genders:
             gender_dbs[gender] = self.reproduce(name=gender)
         # Put patients in their respective gender dbs
-        for patient in self.patients.values():
+        for patient in self.patients:
             gender_dbs[patient.gender].merge_patient(patient)
         import pdb
         pdb.set_trace()
@@ -628,7 +645,7 @@ class PatientDB():
         for race in unique_races:
             race_dbs[race] = self.reproduce(name=race)
         # Put patients in their respective race dbs
-        for patient in self.patients.values():
+        for patient in self.patients:
             race_dbs[patient.race].merge_patient(patient)
         import pdb
         pdb.set_trace()

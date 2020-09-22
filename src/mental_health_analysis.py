@@ -71,13 +71,13 @@ def mental_health_age_distribution(patients, search_terms, output_dir):
     # Calulate age distribution from input patients DB
     min_age, max_age = patients.calculate_patient_ages(compare_date)
     patients.calculate_age_gender_distribution(
-        min_age, max_age, patients.genders(), all_patients_age_dist_path)
+        min_age, max_age, patients.get_unique_genders(), all_patients_age_dist_path)
     print(f"input patients: min_age: {min_age}, max_age: {max_age}")
 
     # Calculate age distribution from matched patients DB
     min_age, max_age = matched_patients.calculate_patient_ages(compare_date)
     matched_patients.calculate_age_gender_distribution(
-        min_age, max_age, matched_patients.genders(),
+        min_age, max_age, matched_patients.get_unique_genders(),
         matched_patients_age_dist_path)
     print(f"matched patients: min_age: {min_age}, max_age: {max_age}")
     import pdb

@@ -40,7 +40,10 @@ class EntityDecoder(JSONDecoder):
     @staticmethod
     def decode_patient(obj):
         """Decode a Patient obj."""
-        date_of_birth_obj = date.fromisoformat(obj['date_of_birth'])
+        try:
+            date_of_birth_obj = date.fromisoformat(obj['date_of_birth'])
+        except ValueError:
+            date_of_birth_obj = None
         p = Patient(patient_id=obj['patient_id'],
                     patient_adult=obj['adult'],
                     patient_age=obj['age'],
@@ -107,6 +110,7 @@ class EntityEncoder(JSONEncoder):
             '__type__': '__Patient__',
             'entity_type': obj.entity_type,
             'entity_id': obj.entity_id,
+            'patient_id': obj.patient_id,
             'adult': obj.adult,
             'age': obj.age,
             'date_of_birth': date_of_birth_str,
