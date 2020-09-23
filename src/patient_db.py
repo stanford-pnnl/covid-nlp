@@ -1,10 +1,11 @@
 # Patient DB
 import json
 import random
+import sys
 import time
 from collections import Counter, namedtuple
 from datetime import date, datetime, timedelta
-from typing import Set, Any, Optional
+from typing import Any, Optional, Set
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,7 +49,7 @@ class PatientDB():
         with open(path, 'r') as f:
             for line in f:
                 patient = json.loads(line, cls=EntityDecoder)
-                self.add_patient(patient)
+                self.add_patient(patient, entity_id=str(patient.patient_id))
 
     def generate_path_with_time(self, path: str, extension: str) -> str:
         """Generate path string with time included."""
@@ -71,7 +72,8 @@ class PatientDB():
                 c['num_keys'] += 1
                 patient = self.data['patients'].get(key)
                 if not patient:
-                    import pdb;pdb.set_trace()
+                    import pdb
+                    pdb.set_trace()
                     continue
                 try:
                     patient_dump = json.dumps(patient, cls=EntityEncoder)
@@ -124,18 +126,18 @@ class PatientDB():
 
         for patient_id in patient_ids:
             patient = Patient(patient_id=str(patient_id))
-            self.add_patient(patient)
+            self.add_patient(patient, entity_id=str(patient_id))
 
     def merge_patient(self, patient_orig):
         patient_id = patient_orig.patient_id
         patient = self.get_patient_by_patient_id(patient_id)
         if patient:
             entity_id = patient.entity_id
-            print(f"Overwriting patient {patient_id} "
-                  f"w/ entity_id: {entity_id}")
+            # print(f"Overwriting patient {patient_id} "
+            #      f"w/ entity_id: {entity_id}")
         else:
             entity_id = None
-        self.add_patient(patient_orig, entity_id=entity_id)
+        self.add_patient(patient_orig, entity_id=str(entity_id))
 
     def max_entity_key(self, entity):
         events_keys = self.data[entity].keys()
@@ -143,7 +145,8 @@ class PatientDB():
         max_events_key = 0
         if events_keys:
             max_events_key = max(events_keys)
-        max_events_keys = str(max_events_key)
+        #FIXME, make sure this is correct
+        max_events_key = str(max_events_key)
         return max_events_key
 
     def find_empty_entity_key(self, entity) -> str:
@@ -179,6 +182,11 @@ class PatientDB():
         if not entity_id:
             entity_id = self.find_empty_entity_key('patients')
         patient.entity_id = entity_id
+        entity_id_patient = self.data['patients'].get(entity_id)
+        if entity_id_patient:
+            #print(f'Overwriting patient {entity_id_patient.patient_id}
+            # w/ entity_id {entity_id}')
+            pass
         self.data['patients'][entity_id] = patient
 
     def get_unique_matches(self, matches):
@@ -187,7 +195,15 @@ class PatientDB():
         matched_ids['visit'] = Counter()
         matched_ids['event'] = Counter()
 
-    def match_patients(self, name, term, event_keys='', event_types=['']):
+    def match_patients(self, name, term, event_keys=None, event_types=None):
+        if not event_keys:
+            print('You must provide event_keys to match against. Exiting...')
+            sys.exit(1)
+
+        if not event_types:
+            print('You must provide event_types to match against. Exiting...')
+            sys.exit(1)
+
         matches = set()
         Match = namedtuple(
             'Match', ['patient_id', 'visit_id', 'event_id', 'key', 'term'])
@@ -260,7 +276,7 @@ class PatientDB():
             person_id = row.person_id
             person_id_key = str(person_id)
             # Does this person exist in the patient DB already?
-            patient = self.find_patient_by_patient_id(person_id_key)
+            patient = self.data['patients'].get(person_id_key)
             if not patient:
                 #import pdb;pdb.set_trace()
                 #print(f"Not finding {person_id_key} in patients PatientDB")
@@ -277,10 +293,10 @@ class PatientDB():
 
     def calculate_patient_ages(self, compare_date):
         max_age = 0
-        min_age = 9999
+        min_age = 0
         for patient in self.patients:
             # We can't calculate patient ages w/o dob
-            
+
             if not patient.date_of_birth:
                 # FIXME
                 patient.age = -1
@@ -325,7 +341,7 @@ class PatientDB():
         age_range = range(min_age, max_age + 1)
         ages = dict()
         #ages['all'] = []
-        #for gender in genders:
+        # for gender in genders:
         #    ages[gender] = []
         for patient in self.patients:
             success_counter['total_patients'] += 1
@@ -335,7 +351,7 @@ class PatientDB():
             else:
                 success_counter['patients_with_age'] += 1
             age_counter[patient.age] += 1
-            #ages['all'].append(patient.age)
+            # ages['all'].append(patient.age)
             if not patient.gender:
                 success_counter['patients_without_gender'] += 1
                 continue
@@ -353,9 +369,7 @@ class PatientDB():
         for gender in sorted_gender_keys:
             np_ages[gender] = dict()
             np_ages[gender] = np.array(ages[gender])
-        
-        #FIXME debug
-        #np_ages['MALE'] = np_ages['FEMALE']
+
         import pdb
         pdb.set_trace()
         self.plot_age_gender_distribution(path, np_ages, ages_bins,
@@ -376,15 +390,17 @@ class PatientDB():
         return r_ages, colors, legend
 
     def get_n_colors(self, n):
-        base_colors = ['b', 'g', 'r', 'c', 'm', 'y']
-        tableau_colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
+        #base_colors = ['b', 'g', 'r', 'c', 'm', 'y']
+        tableau_colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red',
+                          'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray',
+                          'tab:olive', 'tab:cyan']
         avail_colors = tableau_colors
         colors = []
         for i in range(n):
-            avail_color = avail_colors.pop()
+            avail_color = avail_colors.pop(0)
             colors.append(avail_color)
         return colors
-            
+
     def plot_age_gender_distribution(self, path, ages, ages_bins, legend):
         print("Plotting age distribution...")
         fig, ax = plt.subplots()
@@ -535,13 +551,14 @@ class PatientDB():
             elif visit_date >= max_visit_date:
                 max_visit_date = visit_date
 
-        #start_visit_date = \
+        # start_visit_date = \
         # datetime(min_visit_date.year, min_visit_date.month, 1)
-        #end_visit_date = \
+        # end_visit_date = \
         # datetime(max_visit_date.year, max_visit_date.month, 1)
         #delta = timedelta()
-        ##FIXME
-        #for visit_date in rrule.rrule(rrule.MONTHLY, dtstart=start_visit_date,
+        # FIXME
+        # for visit_date in rrule.rrule(rrule.MONTHLY,
+        # dtstart=start_visit_date,
         # until=end_visit_date):
         #    print(visit_date)
         #import pdb;pdb.set_trace()
@@ -574,7 +591,8 @@ class PatientDB():
                 matched_patient = Patient(patient_id=patient_id)
                 for matched_visit in matched_visits:
                     matched_patient.visits.append(matched_visit)
-                date_db.add_patient(matched_patient)
+                date_db.add_patient(matched_patient, entity_id=str(
+                    matched_patient.patient_id))
         return date_db
 
     def get_unique_genders(self):
@@ -619,7 +637,8 @@ class PatientDB():
             ethnicity_dbs[ethnicity] = self.reproduce(name=ethnicity)
         # Put patients in their respective ethnicity dbs
         for patient in self.patients:
-            ethnicity_dbs[patient.ethnicity].add_patient(patient)
+            ethnicity_dbs[patient.ethnicity].add_patient(
+                patient, entity_id=str(patient.patient_id))
 
         import pdb
         pdb.set_trace()

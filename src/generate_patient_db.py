@@ -63,6 +63,7 @@ def get_patient_ids(df, use_dask=False):
     print(f"Found {nunique_patient_ids} patient IDs")
     return unique_patient_ids
 
+
 def get_dates(df, use_dask=False):
     unique_dates = df.date.unique()
     if use_dask:
@@ -74,6 +75,7 @@ def get_dates(df, use_dask=False):
 
     print(f"Found {nunique_dates} dates")
     return unique_dates
+
 
 def get_distinct_column_values(df, output_dir, keys, use_dask=False):
     print("Getting distinct values from columns and dumping to files")
@@ -348,12 +350,12 @@ def get_diagnosis_events(patients: PatientDB, df):
     # temporarily using to satisfy unkown columns addition to roles
 
     # FIXME, only look at 1000000 rows
-    i_max = 10000
+    i_max = 1000000
     print(f"Limiting iteration of dataframe to a maximum of {i_max} rows")
     for i, row in enumerate(df.itertuples()):
-        if i % 1000 == 0:
-            print(f"Tuple: {i}/{i_max}")
-        if i > i_max:
+        if i % 100000 == 0:
+            print(f"Tuple: {i}/i_max")
+        if i >= i_max:
             break
         #import pdb;pdb.set_trace()
         date_str = format_date(row.date)
@@ -402,10 +404,10 @@ def get_events(patients: PatientDB, df):
 
 def create_patient_visits(patients: PatientDB, patient_visit_dates):
     for patient_id, visit_id, date_str in patient_visit_dates:
-        
         visit = Visit(patient_id=patient_id, visit_id=visit_id, date=date_str)
         entity_id = patients.num_visits()
         patients.add_visit(visit, entity_id=entity_id)
+
 
 def create_patient_visit_dates(patient_ids, date_strs):
     print('Creating patient visit dates')
@@ -421,6 +423,7 @@ def create_patient_visit_dates(patient_ids, date_strs):
 
     return patient_visit_dates
 
+
 def get_patient_visit_dates(patients: PatientDB, df):
     patient_visit_dates = set()
     for row in df.itertuples():
@@ -433,6 +436,7 @@ def get_patient_visit_dates(patients: PatientDB, df):
         visit = (patient_id, visit_id, date_str)
         patient_visit_dates.add(visit)
     return patient_visit_dates
+
 
 def get_all_patient_visit_dates(patients: PatientDB, df):
     patient_visit_dates = get_patient_visit_dates(patients, df)
@@ -460,33 +464,16 @@ def get_all_patient_ids(demographics, extractions, use_dask):
 
 def main(args):
     # Setup variables
-    #distinct_column_values_dir = f"{output_dir}/distinct_column_values"
-    covid_data_dir = f"/share/pi/stamang/covid/data"
-
-    notes_2019_2020_dir = \
-        f"{covid_data_dir}/notes_20190901_20200701/labeled_extractions"
-    #notes_2018_2019_dir = \
-    # f"{covid_data_dir}/notes_20180901_20190701/extracted_notes"
-
-    notes_2019_2020_paths = \
-        f"{notes_2019_2020_dir}/all_POS_batch000_099.parquet"
-    #notes_2018_2019_paths = \
-    # f"{notes_2018_2019_dir}/extracted_notes_batch*.parquet"
-
-    #path_pattern = f"{notes_2018_2019_dir}/extracted_notes_batch00*.parquet"
-    path_pattern = notes_2019_2020_paths
-    print(f"path_pattern: {path_pattern}")
     print(f"args: {args}")
 
     # Create patient DB to store data
     patients = PatientDB(name='all')
 
     # Get demographics dataframe
-    demographics_path = f"{covid_data_dir}/demo/demo_all_pts.parquet"
-    demographics = get_df(demographics_path, args.use_dask)
+    demographics = get_df(args.demographics_path, args.use_dask)
 
     # Get meddra extractions
-    meddra_extractions = get_df(path_pattern, args.use_dask)
+    meddra_extractions = get_df(args.meddra_extractions_path, args.use_dask)
 
     columns = sorted(meddra_extractions.columns.tolist())
     print(f"Dataframe column names:\n\t{columns}")
@@ -500,15 +487,17 @@ def main(args):
         print("Empty events dict! Exiting...")
         sys.exit(0)
     print(f"Found {patients.num_events()} events")
-    
+
     print("Filter out patient IDs that don't have any events")
     patient_ids = patients.select_non_empty_patients(patient_ids)
 
     print('Get all patient visit dates...')
-    #patient_visit_dates = get_all_patient_visit_dates(patients, meddra_extractions)
+    #patient_visit_dates = \
+    # get_all_patient_visit_dates(patients, meddra_extractions)
     unique_dates = get_dates(meddra_extractions, args.use_dask)
     unique_date_strs = [format_date(d) for d in unique_dates]
-    patient_visit_dates = create_patient_visit_dates(patient_ids, unique_date_strs)
+    patient_visit_dates = \
+        create_patient_visit_dates(patient_ids, unique_date_strs)
 
     print('Creating patient visits...')
     create_patient_visits(patients, patient_visit_dates)
@@ -544,7 +533,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--use_dask', action='store_true')
     parser.add_argument('--sample_column_values', action='store_true')
-    parser.add_argument('--output_dir', default="/home/colbyham/output",
+    parser.add_argument('--demographics_path',
+                        default='/share/pi/stamang/covid/data/demo/'
+                                'demo_all_pts.parquet')
+    parser.add_argument('--meddra_extractions_path',
+                        default='/share/pi/stamang/covid/data/'
+                                'notes_20190901_20200701/labeled_extractions/'
+                                'all_POS_batch000_099.parquet')
+    parser.add_argument('--output_dir',
+                        default='/home/colbyham/output',
                         help='Path to output directory')  # , required=True)
     args: argparse.Namespace = parser.parse_args()
     main(args)
