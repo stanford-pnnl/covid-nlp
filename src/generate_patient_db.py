@@ -511,18 +511,17 @@ def main(args):
     print('Creating patient visits...')
     create_patient_visits(patients, patient_visit_dates)
 
+    print('Attach visits to patients')
+    patients.attach_visits_to_patients(patient_ids)
+    import pdb
+    pdb.set_trace()
+
     # FIXME
     print('Attach events to visits...')
     patients.attach_events_to_visits()
 
-
     print('Attach demographic information to patients')
     patients.add_demographic_info(demographics, args.use_dask)
-    import pdb
-    pdb.set_trace()
-
-    print('Attach visits to patients')
-    patients.attach_visits_to_patients(patient_ids)
     import pdb
     pdb.set_trace()
 
