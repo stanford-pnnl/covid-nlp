@@ -266,6 +266,10 @@ class Event(Entity):
         self.event_type = "CONDITION_OCCURENCE"
         self.add_condition_occurence_roles(row)
 
+    def drug_exposure_role(self, row):
+        self.event_type = "DRUG_EXPOSURE"
+        self.add_drug_exposure_roles(row)
+
     def add_meddra_roles(self, row):
         # Meddra levels
         self.roles['SOC'] = row.SOC
@@ -306,6 +310,36 @@ class Event(Entity):
         self.roles['condition_end_date'] = row.condition_end_date
         self.roles['condition_end_datetime'] = row.condition_end_datetime
         self.roles['condition_type_concept_id'] = row.condition_type_concept_id
+
+    def add_drug_exposure_roles(self, row):
+        self.roles['drug_exposure_id'] = row.drug_exposure_id
+        self.roles['person_id'] = row.person_id
+        self.roles['drug_concept_id'] = row.drug_concept_id
+        self.roles['drug_exposure_start_DATE'] = row.drug_exposure_start_DATE
+        self.roles['drug_exposure_start_DATETIME'] = \
+            row.drug_exposure_start_DATETIME
+        self.roles['drug_exposure_end_DATE'] = row.drug_exposure_end_DATE
+        self.roles['drug_exposure_end_DATETIME'] = \
+            row.drug_exposure_end_DATETIME
+        self.roles['verbatim_end_DATE'] = row.verbatim_end_DATE
+        self.roles['drug_type_concept_id'] = row.drug_type_concept_id
+        self.roles['stop_reason'] = row.stop_reason
+        self.roles['refills'] = row.refills
+        self.roles['quantity'] = row.quantity
+        self.roles['days_supply'] = row.days_supply
+        self.roles['sig'] = row.sig
+        self.roles['route_concept_id'] = row.route_concept_id
+        self.roles['lot_number'] = row.lot_number
+        self.roles['provider_id'] = row.provider_id
+        self.roles['visit_occurrence_id'] = row.visit_occurrence_id
+        self.roles['visit_detail_id'] = row.visit_detail_id
+        self.roles['drug_source_value'] = row.drug_source_value
+        self.roles['drug_source_concept_id'] = row.drug_source_concept_id
+        self.roles['route_source_value'] = row.route_source_value
+        self.roles['dose_unit_source_value'] = row.dose_unit_source_value
+        self.roles['trace_id'] = row.trace_id
+        self.roles['unit_id'] = row.unit_id
+        self.roles['load_table_id'] = row.load_table_id
 
     # broken FIXME
     def __eq__(self, other):
