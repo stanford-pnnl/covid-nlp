@@ -258,6 +258,10 @@ class Event(Entity):
         self.event_type = "MEDDRAEvent"
         self.add_meddra_roles(row)
 
+    def condition_occurence_role(self, row):
+        self.event_type = "CONDITION_OCCURENCE"
+        self.add_condition_occurence_roles(row)
+
     def add_meddra_roles(self, row):
         # Meddra levels
         self.roles['SOC'] = row.SOC
@@ -289,6 +293,16 @@ class Event(Entity):
         self.roles['present'] = row.present
         self.roles['ttype'] = row.ttype
 
+    def add_condition_occurence_roles(self, row):
+        self.roles['condition_occurrence_id'] = row.condition_occurence_id
+        self.roles['person_id'] = row.person_id
+        self.roles['condition_concept_id'] = row.condition_concept_id
+        self.roles['condition_start_date'] = row.condition_start_date
+        self.roles['condition_start_datetime'] = row.condition_start_datetime
+        self.roles['condition_end_date'] = row.condition_end_date
+        self.roles['condition_end_datetime'] = row.condition_end_datetime
+        self.roles['condition_type_concept_id'] = row.condition_type_concept_id
+
     # broken FIXME
     def __eq__(self, other):
         """Test if Event objects are equal."""
@@ -309,9 +323,11 @@ class Event(Entity):
         sep_2 = f"{sep*indent2}"
         event_str = f"{sep_1}Event {'{'}\n"
         event_str += f"{sep_2}entity_id: {self.entity_id}\n"
+        event_str += f"{sep_2}event_id: {self.event_id}\n"
+        event_str += f"{sep_2}visit_id: {self.visit_id}\n"
+        event_str += f"{sep_2}patient_id: {self.patient_id}\n"
         event_str += f"{sep_2}chartdate: {self.chartdate}\n"
         event_str += f"{sep_2}event_type: {self.event_type}\n"
-        event_str += f"{sep_2}provenance: {self.provenance}\n"
         event_str += f"{sep_2}roles: {'{'}\n"
         for role, role_value in self.roles.items():
             event_str += f"{sep_2}{sep}{role}: {role_value}\n"
@@ -359,8 +375,8 @@ class Visit(Entity):
         sep_2 = f"{sep*indent2}"
         visit_str = f"{sep_1}Visit {'{'}\n"
         visit_str += f"{sep_2}entity_id: {self.entity_id}\n"
-        visit_str += f"{sep_2}hadm_id: {self.hadm_id}\n"
-        visit_str += f"{sep_2}provenance: {self.provenance}\n"
+        visit_str += f"{sep_2}visit_id: {self.visit_id}\n"
+        visit_str += f"{sep_2}patient_id: {self.patient_id}\n"
         visit_str += f"{sep_2}events: [\n"
         for event in self.events:
             visit_str += str(event)
@@ -408,6 +424,14 @@ class Patient(Entity):
             num_events += visit.num_events()
 
         return num_events
+
+    def find_visit_by_id(self, visit_id):
+        found_v = None
+        for v in self.visits:
+            if v.visit_id == visit_id:
+                found_v = v
+        return found_v
+
 
     def __eq__(self, other):
         """Test if Patient objects are equal."""
