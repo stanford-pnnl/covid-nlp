@@ -305,7 +305,7 @@ def format_date(date_obj) -> str:
 # FIXME
 
 
-def format_date_str(date_str):
+def date_str_to_obj(date_str):
     date_obj = datetime.strptime(date_str, "%Y-%m-%d")
     return date_obj
 
@@ -350,7 +350,7 @@ def get_diagnosis_events(patients: PatientDB, df):
     # temporarily using to satisfy unkown columns addition to roles
 
     # FIXME, only look at 1000000 rows
-    i_max = 100000
+    i_max = 10000000
     print(f"Limiting iteration of dataframe to a maximum of {i_max} rows")
     for i, row in enumerate(df.itertuples()):
         if i % 1000000 == 0:
@@ -404,9 +404,12 @@ def get_events(patients: PatientDB, df):
 
 
 def create_patient_visits(patients: PatientDB, patient_visit_dates):
-    for patient_id, date_str in patient_visit_dates:
+    for i, patient_id, date_str in enumerate(patient_visit_dates):
+        if i % 10000 == 0:
+            print(f"{now_str()} creating visit {i}/len(patient_visit_dates.keys())")
         visit_id = date_str
-        visit = Visit(patient_id=str(patient_id), visit_id=visit_id, date=date_str)
+        date_obj = date_str_to_obj(date_str)
+        visit = Visit(patient_id=str(patient_id), visit_id=visit_id, date=date_obj)
         entity_id = patients.num_visits()
         patients.add_visit(visit, entity_id=entity_id)
 
@@ -500,19 +503,19 @@ def main(args):
     import pdb
     pdb.set_trace()
 
-    print('Get all patient visit dates...')
+    #print('Get all patient visit dates...')
     #patient_visit_dates = \
     # get_all_patient_visit_dates(patients, meddra_extractions)
-    unique_dates = get_dates(meddra_extractions, args.use_dask)
-    unique_date_strs = [format_date(d) for d in unique_dates]
-    patient_visit_dates = \
-        create_patient_visit_dates(patient_ids, unique_date_strs)
+    #unique_dates = get_dates(meddra_extractions, args.use_dask)
+    #unique_date_strs = [format_date(d) for d in unique_dates]
+    #patient_visit_dates = \
+    #    create_patient_visit_dates(patient_ids, unique_date_strs)
 
-    print('Creating patient visits...')
-    create_patient_visits(patients, patient_visit_dates)
+    #print('Creating patient visits...')
+    #create_patient_visits(patients, patient_visit_dates)
 
-    print('Attach visits to patients')
-    patients.attach_visits_to_patients(patient_ids)
+    #print('Attach visits to patients')
+    #patients.attach_visits_to_patients(patient_ids)
     import pdb
     pdb.set_trace()
 
