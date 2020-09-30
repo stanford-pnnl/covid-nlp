@@ -4,54 +4,173 @@ from collections import Counter
 from datetime import date
 from pathlib import Path
 
-from patient_db import PatientDB, get_top_k
+from patient_db import PatientDB, get_top_k, get_unique_match_ids, \
+    get_unique_match_patient_visits
 
 
-def match_terms(patients, terms):
-    print(f"Matching terms:\n\t{terms}\n")
-    print(f"Matching against:\n\t{patients}\n")
-    patients_matched = PatientDB(name='patients_matched')
-    matches = set()
-    for term in terms:
-        print(f"{term}")
-        term_patients_matched, term_matches = \
-            patients.match_patients(
-                f'{term}_patients_matched',
-                term,
-                event_keys=['diagnosis_name'],
-                event_types=['DiagnosisEvent'])
-        patients_matched.merge_patients(term_patients_matched)
-        matches = matches.union(term_matches)
-        print(f"\tresult: {term_patients_matched}\n")
-    print(f"All patients matched:\n\tresult: {patients_matched}")
-    return patients_matched, matches
+def prepare_output_dirs(output_dir, num_questions=0, prefix=''):
+    print('Preparing output directories...')
+    for num_q in range(1, num_questions + 1):
+        output_dir = f"{args.output_dir}/q{num_q}"
+        print(f'\tAttempting to create: {output_dir}')
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
 
 
-def mental_health_co_morbidities(patients, search_terms):
-    print("Running mental health co-morbidities checks...")
-    patients_matched, matches = match_terms(patients, search_terms)
+def run_q2(patients, search_terms, output_dir):
+    print('Running Q2...')
+    #mental_health_age_distribution(patients, search_terms, output_dir)
 
-    event_counters, event_roles, event_entity_levels = \
-        patients_matched.get_event_counters(
-            event_types=['DiagnosisEvent', 'MEDDRAEvent'], meddra_roles=True)
-    #import pdb;pdb.set_trace()
+
+def run_q3():
+    print('Running Q3...')
+
+
+def run_q4():
+    print('Running Q4...')
+
+
+def run_q5():
+    print('Running Q5...')
+
+
+def run_q6():
+    print('Running Q6...')
+
+
+def run_q7():
+    print('Running Q7...')
+
+
+def run_q8():
+    print('Running Q8...')
+
+def run_q9():
+    print('Running Q9...')
+
+
+def run_q1(patients, search_terms):
+    print("Running Q1...")
+    # Find all patients that match at least one of the search terms the roles
+    # diagnosis_name or concept_text for DiagnosisEvents and MEDDRAEvents
+
+    # Set up roles to match by event type data structure
+    event_type_roles = dict()
+    # DiagnosisEvent keys to match on
+    event_type_roles['DiagnosisEvent'] = set()
+    event_type_roles['DiagnosisEvent'].add('diagnosis_name')
+    event_type_roles['DiagnosisEvent'].add('concept_text')
+    # MEDDRAEvent keys to match on
+    event_type_roles['MEDDRAEvent'] = set()
+    event_type_roles['MEDDRAEvent'].add('concept_text')
+
+    matches = \
+        patients.match_terms(search_terms, event_type_roles)
+
+    # For all matched visits IDs iterate through and aggregate other event
+    # role counts
+    unique_match_ids = get_unique_match_ids(matches)
+    unique_patient_visits = get_unique_match_patient_visits(matches)
+    entity_levels = ['patient', 'visit', 'event']
+    cnt_event_type_roles = dict()
+
+    # Set up roles to count on by event type data structure
+    cnt_event_type_roles['DiagnosisEvent'] = set()
+    # DiagnosisEvent keys to count on
+    cnt_event_type_roles['DiagnosisEvent'] = set()
+    cnt_event_type_roles['DiagnosisEvent'].add('diagnosis_name')
+    cnt_event_type_roles['DiagnosisEvent'].add('concept_text')
+    # MEDDRAEvent keys to match on
+    cnt_event_type_roles['MEDDRAEvent'] = set()
+    cnt_event_type_roles['MEDDRAEvent'].add('concept_text')
+
+    counters = dict()
+    items = dict()
+
+    # Prepare counter and event_items
+    for entity_level in entity_levels:
+        counters[entity_level] = dict()
+        items[entity_level] = dict()
+        for event_type, event_roles in cnt_event_type_roles.items():
+            # Create event type dicts
+            if not counters[entity_level].get(event_type):
+                counters[entity_level][event_type] = dict()
+            if not items[entity_level].get(event_type):
+                items[entity_level][event_type] = dict()
+
+            for event_role in event_roles:
+                counters[entity_level][event_type][event_role] = Counter()
+                items[entity_level][event_type][event_role] = set()
+
+    debug = False
+
+    for patient_id in unique_patient_visits.keys():
+        print(f"patient_id: {patient_id}")
+        visit_ids = unique_patient_visits[patient_id].keys()
+        patient = patients.data['patients'][patient_id]
+        # clear patient item counters
+        for event_type, event_roles in event_type_roles.items():
+            for role in event_roles:
+                items['patient'][event_type][role].clear()
+
+        for visit_id in visit_ids:
+            if debug:
+                print(f"visit_id: {visit_id}")
+            visit = patient.find_visit_by_id(visit_id)
+            # clear visit item counters
+            for event_type, event_roles in event_type_roles.items():
+                for role in event_roles:
+                    items['visit'][event_type][role].clear()
+            if debug:
+                print("Done clearing visit items")
+
+            for event in visit.events:
+                for event_type, event_roles in event_type_roles.items():
+                    for role in event_roles:
+                        items['event'][event_type][role].clear()
+                if debug:
+                    print("Done clearing event items")
+                if event.event_type not in event_type_roles.keys():
+                    continue
+                event_roles = event_type_roles[event.event_type]
+                for event_role in event_roles:
+                    item = event.roles[event_role]
+                    # Add item to all item sets
+                    for entity_level in entity_levels:
+                        items[entity_level][event.event_type][event_role].add(item)
+
+                # Count event items
+                for event_type, event_roles in event_type_roles.items():
+                    for event_role in event_roles:
+                        for item in items['event'][event_type][event_role]:
+                            counters['event'][event_type][event_role][item] += 1
+            # Count visit items
+            for event_type, event_roles in event_type_roles.items():
+                for event_role in event_roles:
+                    for item in items['visit'][event_type][event_role]:
+                        counters['visit'][event_type][event_role][item] += 1
+        # Count patient items
+        for event_type, event_roles in event_type_roles.items():
+            for event_role in event_roles:
+                for item in items['patient'][event_type][event_role]:
+                    counters['patient'][event_type][event_role][item] += 1
 
     # Aggregate counts for each such diagnosis code either based on
     # the number of visits or number of patients
     print("\nReporting top-k diagnosis roles...")
-    k, top_k = get_top_k(event_counters,
-                         event_entity_levels,
-                         event_roles,
-                         k=10)
+    k, top_k = get_top_k(counters, entity_levels, cnt_event_type_roles, k=10)
+
     for entity_level in top_k:
         print(f"Top {k} diagnosis roles per {entity_level}:")
-        for key in sorted(top_k[entity_level]):
-            values = top_k[entity_level][key]
-            if values:
-                values_str = [f"\t\t{v}\n" for v in values]
-                values_str = "".join(values_str)
-                print(f"\tkey: {key}\n{values_str}")
-    #import pdb;pdb.set_trace()
+        for event_type, event_roles in cnt_event_type_roles.items():
+            print(f"\tEvent type: {event_type}")
+            for event_role in sorted(event_roles):
+                values = top_k[entity_level][event_type][event_role]
+                if values:
+                    values_str = [f"\t\t{v}\n" for v in values]
+                    values_str = "".join(values_str)
+                    print(f"\t\tevent_role: {event_role}\n{values_str}")
+    import pdb;pdb.set_trace()
+    print()
 
 
 def test_split_by_month(patients):
@@ -67,7 +186,8 @@ def mental_health_age_distribution(patients, search_terms, output_dir):
         f"{output_dir}/matched_patients_dist.png"
 
     # Match patients based on search terms
-    matched_patients, matches = match_terms(patients, search_terms)
+    matched_patients, matches = patients.match_terms(search_terms, [
+                                            'diagnosis_name', 'concept_text'], ['DiagnosisEvent', 'MEDDRAEvent'])
 
     # Set compare date for age calculation to today
     compare_date = date.today()
@@ -92,9 +212,11 @@ def mental_health_age_distribution(patients, search_terms, output_dir):
     print()
 
     # Calculate age/gener distribution for each monthly split
-    for month_split in patients.agg_time('M'):
+    monthly_splits = patients.agg_time('M')
+    for key, month_split in monthly_splits.items():
         month_split_dist_path = \
-            f"{args.output_dir}/{month_split.name}_dist.png"
+            f"{args.output_dir}/{key}_dist.png"
+        print(month_split_dist_path)
         min_age, max_age = month_split.calculate_patient_ages(compare_date)
         month_split.calculate_age_gender_distribution(
             min_age, max_age,
@@ -109,27 +231,51 @@ def main(args):
     patients = PatientDB(name='all')
     patients.load(args.patient_db_path)
 
-    print("\nQuestion 1:")
-    #q1_output_dir = f"{args.output_dir}/q1"
-    #Path(q1_output_dir).mkdir(parents=True, exist_ok=True)
-    question_one_terms = ['Depression', 'Anxiety', 'Insomnia', 'Distress']
-    mental_health_co_morbidities(patients, question_one_terms)
+    # Make sure output dirs are created
+    prepare_output_dirs(args.output_dir, num_questions=9, prefix='q')
 
-    # Q2/Q3
-    print("\nQuestion 2 & 3:")
-    q2_output_dir = f"{args.output_dir}/q2"
-    Path(q2_output_dir).mkdir(parents=True, exist_ok=True)
-    question_two_terms = question_one_terms
-    mental_health_age_distribution(patients,
-                                   question_two_terms,
-                                   q2_output_dir)
+    # Q1 - What are the co-morbidities associated with mental health?
+    question_one_terms = ['depression', 'anxiety', 'insomnia', 'distress']
+    run_q1(patients, question_one_terms)
 
-    # Q4
-    print("\nQuestion 4:")
-    q4_output_dir = f"{args.output_dir}/q4"
-    Path(q4_output_dir).mkdir(parents=True, exist_ok=True)
+    # Q2 - What is the distribution of age groups for patients with major
+    #      depression, anxiety, insomnia or distress?
+    #question_two_terms = question_one_terms
+    #run_q2(patients, question_two_terms, f"{args.output_dir}/q2")
+
+    # Q3 - What is the distribution of age groups and gender groups for
+    #      patients with major depression, anxiety, insomnia or distress?
     #question_three_terms = question_one_terms
-    #mental_health_age_sex_distribution(patients, question_three_terms)
+    #run_q3(patients, question_three_terms, f"{args.output_dir}/q3")
+
+    # Q4 - What is the trend associated with anxiety, loneliness, depression
+    #      in both Dx Codes and Clinical Notes?
+    #question_four_terms = ['anxiety', 'loneliness', 'depression']
+    #run_q4(patients, question_four_terms, f"{args.output_dir}/q4")
+
+    # Q5 - What is the trend assocaited with impaired cognitive function
+    #      (Alzheimers, dementia, mild cognitive impairment) in both Dx Codes
+    #      and Clinical notes?
+    # WHERE ARE DX CODES?
+    #question_five_terms = ['alzheimers',
+    #                       'dementia', 'mild cognitivie impairment']
+    #run_q5(patients, question_five_terms)
+
+    # Q6 - What is the mental health trend associated with older adults with
+    #      multi-morbiditty conditions?
+    #run_q6(patients)
+
+    # Q7 - What are the top reported causes (anger, anxiety, confusion, fear,
+    #      guilt, sadness) for mental health related issues?
+
+    #run_q7()
+    
+    # Q8 - What are the distribution of sentiment for mental health related issues?
+    #run_q8()
+
+    # Q9 - What are the top medications prescribed for patients with mental health related issues?
+    # run_q9()
+
     print("END OF PROGRAM")
 
 
