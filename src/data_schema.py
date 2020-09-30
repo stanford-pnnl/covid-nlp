@@ -469,6 +469,13 @@ class Patient(Entity):
             if visit.visit_id == visit_id:
                 v = visit
         return v
+    
+    def get_visit_ids(self):
+        visit_ids = set()
+        for visit in self.visits:
+            visit_ids.add(visit.visit_id)
+        visit_ids = list(visit_ids)
+        return visit_ids
 
 
     def __eq__(self, other):
