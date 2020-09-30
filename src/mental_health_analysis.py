@@ -104,7 +104,7 @@ def run_q1(patients, search_terms):
     debug = False
 
     for patient_id in unique_patient_visits.keys():
-        print(f"patient_id: {patient_id}")
+        #print(f"patient_id: {patient_id}")
         visit_ids = unique_patient_visits[patient_id].keys()
         patient = patients.data['patients'][patient_id]
         # clear patient item counters
@@ -115,7 +115,7 @@ def run_q1(patients, search_terms):
         for visit_id in visit_ids:
             if debug:
                 print(f"visit_id: {visit_id}")
-            visit = patient.find_visit_by_id(visit_id)
+            visit = patient.get_visit_by_id(visit_id)
             # clear visit item counters
             for event_type, event_roles in event_type_roles.items():
                 for role in event_roles:
@@ -166,7 +166,7 @@ def run_q1(patients, search_terms):
             for event_role in sorted(event_roles):
                 values = top_k[entity_level][event_type][event_role]
                 if values:
-                    values_str = [f"\t\t{v}\n" for v in values]
+                    values_str = [f"\t\t\t{v}\n" for v in values]
                     values_str = "".join(values_str)
                     print(f"\t\tevent_role: {event_role}\n{values_str}")
     import pdb;pdb.set_trace()
