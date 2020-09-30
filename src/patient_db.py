@@ -802,9 +802,11 @@ class PatientDB():
                 print(f"{now_str} Attaching event {i} out of {self.num_events()}")
             try:
                 # FIXME, we dont have unique_visit_ids
-                visit: Visit = self.get_visit_by_visit_id(
-                    patient_id=event.patient_id,
-                    visit_id=event.visit_id)
+                patient = self.data['patient'].get(event.patient_id)
+                if not patient:
+                    import pdb;pdb.set_trace()
+                    print("Couldn't find patient")
+                visit = patient.get_visit_by_id(event.visit_id)
                 # FIXME, is this necessary?
                 if not visit:
                     import pdb;pdb.set_trace()
