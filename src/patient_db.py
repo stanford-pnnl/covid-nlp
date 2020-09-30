@@ -225,7 +225,7 @@ class PatientDB():
         return events_key
 
     def get_random_patient(self):
-        random_patient = random.choice(list(self.patients.keys()))
+        random_patient = random.choice(list(self.data['patients'].keys()))
         return random_patient
 
     def print_random_patient(self):
@@ -299,8 +299,8 @@ class PatientDB():
                         continue
                     event_roles = event_type_roles.get(event_type)
                     ## No event roles to check for this event type
-                    #if not event_roles:
-                    #    continue  # don't think this is necessary
+                    if not event_roles:
+                        continue
                     for role in event_roles:
                         try:
                             compare_term = event.roles[role]
