@@ -425,12 +425,12 @@ class Patient(Entity):
 
         return num_events
 
-    def find_visit_by_id(self, visit_id):
-        found_v = None
-        for v in self.visits:
-            if v.visit_id == visit_id:
-                found_v = v
-        return found_v
+    def get_visit_by_id(self, visit_id: str) -> Visit:
+        v = None
+        for visit in self.visits:
+            if visit.visit_id == visit_id:
+                v = visit
+        return v
 
 
     def __eq__(self, other):
