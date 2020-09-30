@@ -123,12 +123,16 @@ class EntityEncoder(JSONEncoder):
 
     def encode_visit(self, obj):
         """Encode a Visit obj."""
+        try:
+            date_str = obj.date.isoformat()
+        except AttributeError:
+            date_str = ''
         return {
             '__type__': '__Visit__',
             'entity_type': obj.entity_type,
             'entity_id': obj.entity_id,
             'visit_id': obj.visit_id,
-            'date': obj.date.isoformat(),
+            'date': date_str,
             'patient_id': obj.patient_id,
             'events': [self.default(e) for e in obj.events]
         }
