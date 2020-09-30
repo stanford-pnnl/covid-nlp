@@ -15,6 +15,52 @@ from dateutil import rrule
 from data_schema import EntityDecoder, EntityEncoder, Event, Patient, Visit
 
 
+
+Match = namedtuple('Match', ['patient_id', 'visit_id', 'event_id', 'event_type', 'role', 'term'])
+
+
+#### RANKING FUNCTIONS ###
+
+def get_top_k(agg_counts, entity_levels, event_type_roles, k):
+    top_k = dict()
+    for entity_level in entity_levels:
+        top_k[entity_level] = dict()
+        for event_type, event_roles in event_type_roles.items():
+            top_k[entity_level][event_type] = dict()
+            for event_role in event_roles:
+                top_k[entity_level][event_type][event_role] = \
+                    agg_counts[entity_level][event_type][event_role].\
+                    most_common(k)
+
+    return k, top_k
+
+#### MATCHES FUNCTIONS ###
+
+def get_unique_match_ids(matches):
+    matched_ids = dict()
+    matched_ids['patient'] = Counter()
+    matched_ids['visit'] = Counter()
+    matched_ids['event'] = Counter()
+    for match in matches:
+        patient_id, visit_id, event_id, event_type, event_role, term = match
+        matched_ids['patient'][patient_id] += 1
+        matched_ids['visit'][visit_id] += 1
+        matched_ids['event'][event_id] += 1
+    return matched_ids
+
+def get_unique_match_patient_visits(matches):
+    patient_visits = dict()
+    for match in matches:
+        patient_id = match.patient_id
+        visit_id = match.visit_id
+        # Create counter for patient if we haven't seen 
+        # that patient yet
+        if not patient_visits.get(patient_id):
+            patient_visits[patient_id] = Counter()
+        patient_visits[patient_id][visit_id] += 1
+    return patient_visits
+
+
 class PatientDB():
     "Database composed of patient->visit->event relationships"
 
@@ -37,7 +83,8 @@ class PatientDB():
         s += f"num_patients: {self.num_patients()}, "
         s += f"num_visits: {self.num_visits()}, "
         s += f"num_events: {self.num_events()}, "
-        s += f"gender_counts: {self.gender_counts()}"
+        s += f"gender_counts: {self.gender_counts()}, "
+        s += f"event_type_counts: {self.get_count_event_types()})"
         return s
 
     def reproduce(self, name=''):
@@ -59,7 +106,7 @@ class PatientDB():
         return time_path
 
     def dump(self, output_dir: str, path: str, extension: str = "jsonl",
-             unique: bool = False):
+            unique: bool = False, must_have_events: bool = True):
         """Dump patients KG to a file."""
         if unique:
             path = self.generate_path_with_time(path, extension)
@@ -76,6 +123,10 @@ class PatientDB():
                     pdb.set_trace()
                     continue
                 try:
+                    if must_have_events:
+                        if patient.num_events() < 1:
+                            c['skipped_no_events'] += 1
+                            continue
                     patient_dump = json.dumps(patient, cls=EntityEncoder)
                     f.write(f"{patient_dump}\n")
                     c['successful_dumps'] += 1
@@ -112,6 +163,13 @@ class PatientDB():
             num_events += patient.num_events()
         return num_events
 
+    def get_events(self, event_type):
+        matched_events = []
+        for event in self.events:
+            if event.event_type == event_type:
+                matched_events.append(event)
+        return matched_events
+
     def gender_counts(self):
         gender_counter = Counter()
         for patient in self.patients:
@@ -146,7 +204,7 @@ class PatientDB():
         if events_keys:
             max_events_key = max(events_keys)
         #FIXME, make sure this is correct
-        max_events_key = str(max_events_key)
+        #max_events_key = str(max_events_key)
         return max_events_key
 
     def find_empty_entity_key(self, entity) -> str:
@@ -167,47 +225,56 @@ class PatientDB():
 
     def add_event(self, event: Event, entity_id: str = None):
         if not entity_id:
-            entity_id = self.find_empty_entity_key('events')
+            #FIXME
+            #entity_id = self.find_empty_entity_key('events')
+            entity_id = self.num_entities('events')
         event.entity_id = entity_id
         self.data['events'][entity_id] = event
+        return event
 
     def add_visit(self, visit: Visit, entity_id: str = None):
         if not entity_id:
             # FIXME, seems slow
-            entity_id = self.find_empty_entity_key('visits')
+            #entity_id = self.find_empty_entity_key('visits')
+            entity_id = self.num_entities('visits')
         visit.entity_id = entity_id
+        added_events = []
+        # Add events nested in visit
+        for event in visit.events:
+            added_event = self.add_event(event)
+            added_events.append(added_event)
+        visit.events = added_events
         self.data['visits'][entity_id] = visit
+        return visit
 
     def add_patient(self, patient: Patient, entity_id: str = None):
         if not entity_id:
-            entity_id = self.find_empty_entity_key('patients')
+            #entity_id = self.find_empty_entity_key('patients')
+            entity_id = self.num_entities('patients')
         patient.entity_id = entity_id
         entity_id_patient = self.data['patients'].get(entity_id)
         if entity_id_patient:
             #print(f'Overwriting patient {entity_id_patient.patient_id}
             # w/ entity_id {entity_id}')
             pass
+        added_visits = []
+        # Add visits nested in patient
+        for visit in patient.visits:
+            added_visit = self.add_visit(visit)
+            added_visits.append(added_visit)
+        patient.visits = added_visits
         self.data['patients'][entity_id] = patient
+        return patient
+        
 
-    def get_unique_matches(self, matches):
-        matched_ids = dict()
-        matched_ids['patient'] = Counter()
-        matched_ids['visit'] = Counter()
-        matched_ids['event'] = Counter()
-
-    def match_patients(self, name, term, event_keys=None, event_types=None):
-        if not event_keys:
-            print('You must provide event_keys to match against. Exiting...')
-            sys.exit(1)
-
-        if not event_types:
-            print('You must provide event_types to match against. Exiting...')
+    # FIXME
+    def match_patients(self, name, term, event_type_roles=None):
+        if not event_type_roles:
+            print('You must provide event_type_roles for match_patients().'
+                  'Exiting...')
             sys.exit(1)
 
         matches = set()
-        Match = namedtuple(
-            'Match', ['patient_id', 'visit_id', 'event_id', 'key', 'term'])
-
         # Search all patients
         for patient in self.patients:
             patient_id = patient.patient_id
@@ -217,31 +284,45 @@ class PatientDB():
                 # Search all patient events
                 for event in visit.events:
                     event_id = event.event_id
-                    if event.event_type not in event_types:
+                    event_type = event.event_type
+                    # No event type, skipping. This shouldn't happen
+                    if not event_type:
                         continue
-                    for key in event_keys:
-                        compare_term = event.roles[key]
+                    event_roles = event_type_roles.get(event_type)
+                    ## No event roles to check for this event type
+                    #if not event_roles:
+                    #    continue  # don't think this is necessary
+                    for role in event_roles:
+                        try:
+                            compare_term = event.roles[role]
+                        except KeyError:
+                            # Continue to next key if this event doesn't have
+                            # this role 
+                            continue
+                        # FIXME, is this wise?
+                        compare_term = compare_term.lower()
                         if term == compare_term:
-                            match = Match(patient_id, visit_id, event_id, key,
-                                          term)
+                            print(f"Matched patient_id: {patient_id}")
+                            match = Match(patient_id, visit_id, event_id,
+                                          event_type, role, term)
                             matches.add(match)
 
-        matched_patients = self.reproduce(name=name)
-        # Add matched patients to matched_patients PatientDB
-        for match in matches:
-            patient = self.get_patient_by_patient_id(match.patient_id)
-            matched_patients.add_patient(patient)
-        return matched_patients, matches
+        return matches
 
     def attach_visits_to_patients(self, patient_ids):
         c = Counter()
         patient_ids = [str(x) for x in patient_ids]
-        for visit in self.visits:
+        num_visits = len(self.visits)
+        for i, visit in enumerate(self.visits):
+            if i % 100000 == 0:
+                print(f"visit {i}/{num_visits}")
             patient_id = str(visit.patient_id)
             # Skipping patient_ids not in patient_ids set
             if patient_id not in patient_ids:
                 continue
-            patient = self.get_patient_by_patient_id(patient_id)
+            #FIXME
+            #patient = self.get_patient_by_patient_id(patient_id)
+            patient = self.data['patients'][patient_id]
             if not patient:
                 import pdb
                 pdb.set_trace()
@@ -350,7 +431,7 @@ class PatientDB():
                 continue
             else:
                 success_counter['patients_with_age'] += 1
-            age_counter[patient.age] += 1
+            age_counter[str(patient.age)] += 1
             # ages['all'].append(patient.age)
             if not patient.gender:
                 success_counter['patients_without_gender'] += 1
@@ -358,8 +439,8 @@ class PatientDB():
             else:
                 success_counter['patients_with_gender'] += 1
             if not ages.get(patient.gender):
-                ages[patient.gender] = []
-            ages[patient.gender].append(patient.age)
+                ages[str(patient.gender)] = []
+            ages[str(patient.gender)].append(patient.age)
         print(f"age_counter: {age_counter}")
         print(f"success_counter: {success_counter}")
         ages_bins = list(age_range)
@@ -367,8 +448,8 @@ class PatientDB():
         np_ages = dict()
 
         for gender in sorted_gender_keys:
-            np_ages[gender] = dict()
-            np_ages[gender] = np.array(ages[gender])
+            np_ages[str(gender)] = dict()
+            np_ages[str(gender)] = np.array(ages[str(gender)])
 
         import pdb
         pdb.set_trace()
@@ -397,8 +478,11 @@ class PatientDB():
         avail_colors = tableau_colors
         colors = []
         for i in range(n):
-            avail_color = avail_colors.pop(0)
+            avail_color = avail_colors[i]
             colors.append(avail_color)
+        if len(colors) != n:
+            import pdb;pdb.set_trace()
+            print('Not generating correct amount of colors')
         return colors
 
     def plot_age_gender_distribution(self, path, ages, ages_bins, legend):
@@ -601,6 +685,12 @@ class PatientDB():
             unique_genders.add(patient.gender)
         return unique_genders
 
+    def get_count_event_types(self):
+        unique_event_types = Counter()
+        for event in self.events:
+            unique_event_types[event.event_type] += 1
+        return unique_event_types
+
     def get_unique_ethnicities(self):
         unique_ethnicities = set()
         for patient in self.patients:
@@ -688,7 +778,7 @@ class PatientDB():
         v = None
         for visit in self.visits:
             # We have found a vist matching our criteria
-            if visit.visit_id == visit_id:
+            if visit.visit_id == visit_id and visit.patient_id == patient_id:
                 v = visit
                 # breaking at the first visit
                 break
@@ -708,12 +798,19 @@ class PatientDB():
         c = Counter()
 
         # Attach events to visits
-        for event in self.events:
+        for i, event in enumerate(self.events):
+            if i % 10000 == 0:
+                now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                print(f"{now_str} Attaching event {i} out of {self.num_events()}")
             try:
                 # FIXME, we dont have unique_visit_ids
                 visit: Visit = self.get_visit_by_visit_id(
                     patient_id=event.patient_id,
                     visit_id=event.visit_id)
+                # FIXME, is this necessary?
+                if not visit:
+                    import pdb;pdb.set_trace()
+                    print("Couldn't find visit.")
                 visit.events.append(event)
                 c['successful_keys'] += 1
             except KeyError:
@@ -742,12 +839,30 @@ class PatientDB():
 
         return non_empty_patient_ids
 
+    def match_terms(self, terms, event_type_roles):
+        print(f"Matching terms:\n\t{terms}\n")
+        print(f"Matching against:\n\t{self}\n")
+        #patients_matched = self.reproduce(name='patients_matched')
+        matches = set()
+        for term in terms:
+            #FIXME
+            print(f"{term}")
+            term_matches = self.match_patients(
+                    f'{term}_patients_matched',
+                    term,
+                    event_type_roles=event_type_roles)
+            import pdb;pdb.set_trace()
+            matches = matches.union(term_matches)
+            unique_match_ids = get_unique_match_ids(matches)
+            num_term_patients_matched = len(unique_match_ids['patient'])
+            print(f"term: {term}, num_matches: {len(term_matches)}, num_term_patients_matched: {num_term_patients_matched}")
+        return matches
 
-def get_top_k(agg_counts, keys, roles, k):
-    top_k = dict()
-    for key in keys:
-        top_k[key] = dict()
-        for role in roles:
-            top_k[key][role] = agg_counts[key][role].most_common(k)
-
-    return k, top_k
+    def generate_from_matches(self, matches, name=''):
+        patients_matched = self.reproduce(name=name)
+        unique_match_ids = get_unique_match_ids(matches)
+        patient_ids = unique_match_ids['patient'].keys()
+        for patient_id in patient_ids:
+            patient = self.patients[patient_id]
+            patients_matched.merge_patient(patient)
+        return patients_matched
