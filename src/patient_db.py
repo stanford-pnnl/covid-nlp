@@ -16,6 +16,12 @@ from data_schema import EntityDecoder, EntityEncoder, Event, Patient, Visit
 
 Match = namedtuple('Match', ['patient_id', 'visit_id', 'event_id', 'event_type', 'role', 'term'])
 
+def date_str_to_obj(date_str):
+    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+    return date_obj
+
+def now_str():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 #### RANKING FUNCTIONS ###
 
@@ -115,7 +121,7 @@ class PatientDB():
         with open(output_path, 'w') as f:
             for key in sorted(self.data['patients'].keys(), key=int):
                 c['num_keys'] += 1
-                patient = self.data['patients'].get(key)
+                patient = self.get_patient_by_id(key)
                 if not patient:
                     import pdb
                     pdb.set_trace()
@@ -174,9 +180,6 @@ class PatientDB():
             gender_counter[patient.gender] += 1
         return gender_counter
 
-    def get_patient(self, patient_id):
-        return self.data['patients'].get(patient_id)
-
     def generate_patients_from_ids(self, patient_ids):
         """Generate patients from list of IDs."""
 
@@ -220,6 +223,14 @@ class PatientDB():
             events_key = random.choice(list(available_entity_keys))
 
         return events_key
+
+    def get_random_patient(self):
+        random_patient = random.choice(list(self.patients.keys()))
+        return random_patient
+
+    def print_random_patient(self):
+        random_patient = self.get_random_patient()
+        print(random_patient)
 
     def add_event(self, event: Event, entity_id: str = None):
         if not entity_id:
@@ -300,7 +311,7 @@ class PatientDB():
                         # FIXME, is this wise?
                         compare_term = compare_term.lower()
                         if term == compare_term:
-                            print(f"Matched patient_id: {patient_id}")
+                            #print(f"Matched patient_id: {patient_id}")
                             match = Match(patient_id, visit_id, event_id,
                                           event_type, role, term)
                             matches.add(match)
@@ -313,7 +324,7 @@ class PatientDB():
         num_visits = len(self.visits)
         for i, visit in enumerate(self.visits):
             if i % 100000 == 0:
-                print(f"visit {i}/{num_visits}")
+                print(f"{now_str()} visit {i}/{num_visits}")
             patient_id = str(visit.patient_id)
             # Skipping patient_ids not in patient_ids set
             if patient_id not in patient_ids:
@@ -782,15 +793,9 @@ class PatientDB():
                 break
         return v
 
-    def get_patient_by_patient_id(self, patient_id: str) -> Optional[Any]:
-        p = None
-        for patient in self.patients:
-            # We have found a patient matching our patient id
-            if patient.patient_id == patient_id:
-                p = patient
-                # breaking at the first patient
-                break
-        return p
+    def get_patient_by_id(self, patient_id: str) -> Optional[Any]:
+        patient = self.data['patients'].get(patient_id)
+        return patient
 
     def attach_events_to_visits(self):
         c = Counter()
@@ -802,15 +807,21 @@ class PatientDB():
                 print(f"{now_str} Attaching event {i} out of {self.num_events()}")
             try:
                 # FIXME, we dont have unique_visit_ids
-                patient = self.data['patient'].get(event.patient_id)
+                patient = self.get_patient_by_id(event.patient_id)
                 if not patient:
                     import pdb;pdb.set_trace()
                     print("Couldn't find patient")
                 visit = patient.get_visit_by_id(event.visit_id)
                 # FIXME, is this necessary?
+                # FIXME, choosing to create visits here instead of creating all possible
                 if not visit:
-                    import pdb;pdb.set_trace()
-                    print("Couldn't find visit.")
+                    #import pdb;pdb.set_trace()
+                    #print("Couldn't find visit.")
+                    date_str = event.visit_id
+                    date_obj = date_str_to_obj(date_str)
+                    visit = Visit(date=date_obj, visit_id=event.visit_id, patient_id=event.patient_id)
+                    visit = self.add_visit(visit)
+                    patient.visits.append(visit)
                 visit.events.append(event)
                 c['successful_keys'] += 1
             except KeyError:
@@ -846,12 +857,12 @@ class PatientDB():
         matches = set()
         for term in terms:
             #FIXME
-            print(f"{term}")
+            #print(f"{term}")
             term_matches = self.match_patients(
                     f'{term}_patients_matched',
                     term,
                     event_type_roles=event_type_roles)
-            import pdb;pdb.set_trace()
+            #import pdb;pdb.set_trace()
             matches = matches.union(term_matches)
             unique_match_ids = get_unique_match_ids(matches)
             num_term_patients_matched = len(unique_match_ids['patient'])
