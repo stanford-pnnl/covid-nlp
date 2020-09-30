@@ -31,6 +31,9 @@ def get_df(path, use_dask=False):
             df = pd.read_parquet(path, engine='pyarrow')
         elif '.hdf' in path:
             df = pd.read_hdf(path)
+        elif '.csv' in path:
+            # FIXME, files that are gzipped need to have the correct extension .gz
+            df = pd.read_csv(path, compression='gzip')
         else:
             print(f"Unhandled path, no matching file extension: {path}")
             sys.exit(1)
@@ -294,20 +297,25 @@ def get_diagnosis_events_distress(patients: PatientDB, row, date_str,
         patients.add_event(distress_diagnosis_event)
     return distress_diagnosis_event_found
 
-
-def format_date(date_obj) -> str:
-    try:
-        date_str = date_obj.strftime('%Y-%m-%d')
-    except AttributeError:
-        date_str = date_obj
-    return date_str
-
 # FIXME
+def date_obj_to_str(date_obj):
+    date_str = date_obj.strftime("%Y-%m-%d")
+    return date_str
 
 
 def date_str_to_obj(date_str):
-    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+    date_obj = date.strptime(date_str, "%Y-%m-%d")
     return date_obj
+
+
+def datetime_obj_to_str(datetime_obj):
+    datetime_str = datetime_obj.strftime("%Y-%m-%d")
+    return datetime_str
+
+
+def datetime_str_to_obj(datetime_str):
+    datetime_obj = datetime.strptime(datetime_str, "%Y-%m-%d")
+    return datetime_obj
 
 
 def count_column_values(row, counter):
@@ -325,7 +333,7 @@ def count_column_values(row, counter):
     counter['SOC_CUI'][row.SOC_CUI] += 1
     counter['SOC_text'][row.SOC_text] += 1
     counter['concept_text'][row.concept_text] += 1
-    counter['date'][format_date(row.date)] += 1
+    counter['date'][date_obj_to_str(row.date)] += 1
     counter['extracted_CUI'][row.extracted_CUI] += 1
     counter['medID'][row.medID] += 1
     counter['note_id'][row.note_id] += 1
@@ -336,6 +344,34 @@ def count_column_values(row, counter):
     counter['present'][row.present] += 1
     counter['ttype'][row.ttype] += 1
 
+
+def get_medication_events(patients: PatientDB, df):
+    print("Getting medication events...")
+    columns: Dict[str, Counter] = dict()
+    column_names = df.columns.tolist()
+    for column in column_names:
+        columns[column] = Counter()
+    print(df.head())
+    # FIXME
+    # get medication events from drug_exposure table
+    i_max = 1000000
+    print(f"Limiting iteration of dataframe to a maximum of {i_max} rows")
+    for i, row in enumerate(df.itertuples()):
+        if i % 1000000 == 0:
+            now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            print(f"{now_str} Tuple: {i}/{i_max}")
+        if i >= i_max:
+            break
+        # FIXME, should events be required to have a single date if 
+        # they are more of an event range?
+        patient_id = str(row.person_id)
+        date_obj = row.drug_exposure_start_date
+        date_str = date_obj_to_str(date_obj)
+        drug_exposure_event = \
+            Event(chartdate=date_str, visit_id=date_str, patient_id=patient_id)
+        drug_exposure_event.drug_exposure_role(row)
+        # TODO, convert drug_exposure events to medication events? 
+        patients.add_event(drug_exposure_event)
 
 def get_diagnosis_events(patients: PatientDB, df):
     print("Getting diagnosis events...")
@@ -350,7 +386,7 @@ def get_diagnosis_events(patients: PatientDB, df):
     # temporarily using to satisfy unkown columns addition to roles
 
     # FIXME, only look at 1000000 rows
-    i_max = 10000000
+    i_max = 1000000
     print(f"Limiting iteration of dataframe to a maximum of {i_max} rows")
     for i, row in enumerate(df.itertuples()):
         if i % 1000000 == 0:
@@ -359,7 +395,7 @@ def get_diagnosis_events(patients: PatientDB, df):
         if i >= i_max:
             break
         #import pdb;pdb.set_trace()
-        date_str = format_date(row.date)
+        date_str = date_obj_to_str(row.date)
         patient_id = str(row.patid)
 
         # Meddra column value counters
@@ -397,19 +433,22 @@ def get_diagnosis_events(patients: PatientDB, df):
     #import pdb;pdb.set_trace()
 
 
-def get_events(patients: PatientDB, df):
+def get_events(patients: PatientDB, diagnosis_df, medication_df):
     print("Getting events...")
-    # Diagnosis Events
-    get_diagnosis_events(patients, df)
+    print("Getting diagnosis events")
+    get_diagnosis_events(patients, diagnosis_df)
+
+    print("Getting medication events")
+    get_medication_events(patients, medication_df)
 
 
 def create_patient_visits(patients: PatientDB, patient_visit_dates):
-    for i, patient_id, date_str in enumerate(patient_visit_dates):
+    for i, patient_id, datetime_str in enumerate(patient_visit_dates):
         if i % 10000 == 0:
             print(f"{now_str()} creating visit {i}/len(patient_visit_dates.keys())")
-        visit_id = date_str
-        date_obj = date_str_to_obj(date_str)
-        visit = Visit(patient_id=str(patient_id), visit_id=visit_id, date=date_obj)
+        visit_id = datetime_str
+        datetime_obj = datetime_str_to_obj(datetime_str)
+        visit = Visit(patient_id=str(patient_id), visit_id=visit_id, date=datetime_obj)
         entity_id = patients.num_visits()
         patients.add_visit(visit, entity_id=entity_id)
 
@@ -424,7 +463,7 @@ def create_patient_visit_dates(patient_ids, date_strs):
     #for patient_id in patient_ids:
     #    for date_str in date_strs:
     #        visit_id = date_str
-    #        date_obj = format_date_str(date_str)
+    #        date_obj = date_str_to_obj(date_str)
     #        v = (patient_id, visit_id, date_obj)
     #        patient_visit_dates.append(v)
 
@@ -438,7 +477,7 @@ def get_patient_visit_dates(patients: PatientDB, df):
         # Skip f missing patient_id
         if not patient_id:
             continue
-        date_str = format_date(row.date)
+        date_str = date_obj_to_str(row.date)
         visit_id = date_str
         visit = (patient_id, visit_id, date_str)
         patient_visit_dates.add(visit)
@@ -451,20 +490,25 @@ def get_all_patient_visit_dates(patients: PatientDB, df):
     return patient_visit_dates
 
 
-def get_all_patient_ids(demographics, extractions, use_dask):
+def get_all_patient_ids(demographics, extractions, medications, use_dask):
     all_patient_ids = set()
 
-    person_ids = get_person_ids(demographics, use_dask)
-    person_ids = set(person_ids)
-    print(f"len(person_ids): {len(person_ids)}")
+    demo_person_ids = get_person_ids(demographics, use_dask)
+    demo_person_ids = set(demo_person_ids)
+    print(f"demographics: len(demo_person_ids): {len(demo_person_ids)}")
     all_patient_ids.update(person_ids)
 
     # Get distinct Patient ID values from dataframe
     patient_ids = get_patient_ids(extractions, use_dask)
     patient_ids = set(patient_ids)
-    print(f"len(patient_ids): {len(patient_ids)}")
+    print(f"extractions: len(patient_ids): {len(patient_ids)}")
     all_patient_ids.update(patient_ids)
-
+    
+    med_person_ids = get_person_ids(medications)
+    med_person_ids = set(med_person_ids)
+    print(f"medications: len(med_person_ids): {len(med_person_ids)}")
+    all_patient_ids.update(person_ids)
+    
     print(f"len(all_patient_ids): {len(all_patient_ids)}")
     return all_patient_ids
 
@@ -482,14 +526,18 @@ def main(args):
     # Get meddra extractions
     meddra_extractions = get_df(args.meddra_extractions_path, args.use_dask)
 
+    # Get medications table
+    medications = get_df(args.medications_path, args.use_dask)
+
     columns = sorted(meddra_extractions.columns.tolist())
     print(f"Dataframe column names:\n\t{columns}")
 
     patient_ids = get_all_patient_ids(demographics,
                                       meddra_extractions,
+                                      medications,
                                       args.use_dask)
 
-    get_events(patients, meddra_extractions)
+    get_events(patients, meddra_extractions, medications)
     if not patients.data['events']:
         print("Empty events dict! Exiting...")
         sys.exit(0)
@@ -507,7 +555,7 @@ def main(args):
     #patient_visit_dates = \
     # get_all_patient_visit_dates(patients, meddra_extractions)
     #unique_dates = get_dates(meddra_extractions, args.use_dask)
-    #unique_date_strs = [format_date(d) for d in unique_dates]
+    #unique_date_strs = [date_obj_to_str(d) for d in unique_dates]
     #patient_visit_dates = \
     #    create_patient_visit_dates(patient_ids, unique_date_strs)
 
@@ -547,8 +595,10 @@ if __name__ == '__main__':
                         default='/share/pi/stamang/covid/data/'
                                 'notes_20190901_20200701/labeled_extractions/'
                                 'all_POS_batch000_099.parquet')
+    parser.add_argument('--medications_path', default='/share/pi/stamang/covid/data/drug_exposure/drug_exposure000000000000.csv')
     parser.add_argument('--output_dir',
                         default='/home/colbyham/output',
                         help='Path to output directory')  # , required=True)
+    
     args: argparse.Namespace = parser.parse_args()
     main(args)
