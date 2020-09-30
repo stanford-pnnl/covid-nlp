@@ -365,8 +365,7 @@ def get_medication_events(patients: PatientDB, df):
         # FIXME, should events be required to have a single date if 
         # they are more of an event range?
         patient_id = str(row.person_id)
-        date_obj = row.drug_exposure_start_date
-        date_str = date_obj_to_str(date_obj)
+        date_str = row.drug_exposure_start_DATE
         drug_exposure_event = \
             Event(chartdate=date_str, visit_id=date_str, patient_id=patient_id)
         drug_exposure_event.drug_exposure_role(row)
@@ -395,7 +394,7 @@ def get_diagnosis_events(patients: PatientDB, df):
         if i >= i_max:
             break
         #import pdb;pdb.set_trace()
-        date_str = date_obj_to_str(row.date)
+        date_str = row.date
         patient_id = str(row.patid)
 
         # Meddra column value counters
@@ -496,7 +495,7 @@ def get_all_patient_ids(demographics, extractions, medications, use_dask):
     demo_person_ids = get_person_ids(demographics, use_dask)
     demo_person_ids = set(demo_person_ids)
     print(f"demographics: len(demo_person_ids): {len(demo_person_ids)}")
-    all_patient_ids.update(person_ids)
+    all_patient_ids.update(demo_person_ids)
 
     # Get distinct Patient ID values from dataframe
     patient_ids = get_patient_ids(extractions, use_dask)
@@ -507,7 +506,7 @@ def get_all_patient_ids(demographics, extractions, medications, use_dask):
     med_person_ids = get_person_ids(medications)
     med_person_ids = set(med_person_ids)
     print(f"medications: len(med_person_ids): {len(med_person_ids)}")
-    all_patient_ids.update(person_ids)
+    all_patient_ids.update(med_person_ids)
     
     print(f"len(all_patient_ids): {len(all_patient_ids)}")
     return all_patient_ids
