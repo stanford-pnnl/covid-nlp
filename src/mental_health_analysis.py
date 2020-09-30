@@ -44,8 +44,22 @@ def run_q7():
 def run_q8():
     print('Running Q8...')
 
-def run_q9():
+def run_q9(patients, matches, event_type_roles):
     print('Running Q9...')
+    cnt_event_type_roles = dict()
+
+    # Set up roles to count on by event type data structure
+    cnt_event_type_roles['DRUG_EXPOSURE'] = set()
+    cnt_event_type_roles['DRUG_EXPOSURE'].add('drug_concept_id')
+    cnt_event_type_roles['DRUG_EXPOSURE'].add('drug_type_concept_id')
+
+    entity_levels = ['patient', 'visit', 'event']
+    counters = patients.get_event_counters_from_matches(
+        matches, event_type_roles, cnt_event_type_roles,
+        entity_levels=entity_levels)
+    
+    import pdb;pdb.set_trace()
+    print()
 
 
 def run_q1(patients, search_terms):
@@ -68,9 +82,9 @@ def run_q1(patients, search_terms):
 
     # For all matched visits IDs iterate through and aggregate other event
     # role counts
-    unique_match_ids = get_unique_match_ids(matches)
+    #unique_match_ids = get_unique_match_ids(matches)
     unique_patient_visits = get_unique_match_patient_visits(matches)
-    entity_levels = ['patient', 'visit', 'event']
+    
     cnt_event_type_roles = dict()
 
     # Set up roles to count on by event type data structure
@@ -83,76 +97,11 @@ def run_q1(patients, search_terms):
     cnt_event_type_roles['MEDDRAEvent'] = set()
     cnt_event_type_roles['MEDDRAEvent'].add('concept_text')
 
-    counters = dict()
-    items = dict()
+    entity_levels = ['patient', 'visit', 'event']
+    counters = patients.get_counters_from_matches(
+        matches, unique_patient_visits, event_type_roles, cnt_event_type_roles,
+        entity_levels=entity_levels)
 
-    # Prepare counter and event_items
-    for entity_level in entity_levels:
-        counters[entity_level] = dict()
-        items[entity_level] = dict()
-        for event_type, event_roles in cnt_event_type_roles.items():
-            # Create event type dicts
-            if not counters[entity_level].get(event_type):
-                counters[entity_level][event_type] = dict()
-            if not items[entity_level].get(event_type):
-                items[entity_level][event_type] = dict()
-
-            for event_role in event_roles:
-                counters[entity_level][event_type][event_role] = Counter()
-                items[entity_level][event_type][event_role] = set()
-
-    debug = False
-
-    for patient_id in unique_patient_visits.keys():
-        #print(f"patient_id: {patient_id}")
-        visit_ids = unique_patient_visits[patient_id].keys()
-        patient = patients.data['patients'][patient_id]
-        # clear patient item counters
-        for event_type, event_roles in event_type_roles.items():
-            for role in event_roles:
-                items['patient'][event_type][role].clear()
-
-        for visit_id in visit_ids:
-            if debug:
-                print(f"visit_id: {visit_id}")
-            visit = patient.get_visit_by_id(visit_id)
-            # clear visit item counters
-            for event_type, event_roles in event_type_roles.items():
-                for role in event_roles:
-                    items['visit'][event_type][role].clear()
-            if debug:
-                print("Done clearing visit items")
-
-            for event in visit.events:
-                for event_type, event_roles in event_type_roles.items():
-                    for role in event_roles:
-                        items['event'][event_type][role].clear()
-                if debug:
-                    print("Done clearing event items")
-                if event.event_type not in event_type_roles.keys():
-                    continue
-                event_roles = event_type_roles[event.event_type]
-                for event_role in event_roles:
-                    item = event.roles[event_role]
-                    # Add item to all item sets
-                    for entity_level in entity_levels:
-                        items[entity_level][event.event_type][event_role].add(item)
-
-                # Count event items
-                for event_type, event_roles in event_type_roles.items():
-                    for event_role in event_roles:
-                        for item in items['event'][event_type][event_role]:
-                            counters['event'][event_type][event_role][item] += 1
-            # Count visit items
-            for event_type, event_roles in event_type_roles.items():
-                for event_role in event_roles:
-                    for item in items['visit'][event_type][event_role]:
-                        counters['visit'][event_type][event_role][item] += 1
-        # Count patient items
-        for event_type, event_roles in event_type_roles.items():
-            for event_role in event_roles:
-                for item in items['patient'][event_type][event_role]:
-                    counters['patient'][event_type][event_role][item] += 1
 
     # Aggregate counts for each such diagnosis code either based on
     # the number of visits or number of patients
@@ -171,6 +120,7 @@ def run_q1(patients, search_terms):
                     print(f"\t\tevent_role: {event_role}\n{values_str}")
     import pdb;pdb.set_trace()
     print()
+    return matches, event_type_roles, cnt_event_type_roles
 
 
 def test_split_by_month(patients):
@@ -236,7 +186,10 @@ def main(args):
 
     # Q1 - What are the co-morbidities associated with mental health?
     question_one_terms = ['depression', 'anxiety', 'insomnia', 'distress']
-    run_q1(patients, question_one_terms)
+    question_one_matches,\
+        question_one_event_type_roles,\
+            question_one_cnt_event_type_roles = \
+        run_q1(patients, question_one_terms)
 
     # Q2 - What is the distribution of age groups for patients with major
     #      depression, anxiety, insomnia or distress?
@@ -274,7 +227,7 @@ def main(args):
     #run_q8()
 
     # Q9 - What are the top medications prescribed for patients with mental health related issues?
-    # run_q9()
+    run_q9(patients, question_one_matches, question_one_event_type_roles)
 
     print("END OF PROGRAM")
 
