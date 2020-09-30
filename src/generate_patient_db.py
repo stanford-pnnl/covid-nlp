@@ -6,6 +6,7 @@ import sys
 import time
 from collections import Counter
 from datetime import date, datetime
+from itertools import product
 from typing import Any, Dict, List, Set
 
 import dask
@@ -15,10 +16,9 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pyarrow
 from tqdm import tqdm
-from itertools import product
 
+import pyarrow
 from data_schema import EntityEncoder, Event, Patient, Visit
 from patient_db import PatientDB
 

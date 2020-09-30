@@ -4,8 +4,8 @@ from collections import Counter
 from datetime import date
 from pathlib import Path
 
-from patient_db import PatientDB, get_top_k, get_unique_match_ids, \
-    get_unique_match_patient_visits
+from patient_db import (PatientDB, get_top_k, get_unique_match_ids,
+                        get_unique_match_patient_visits)
 
 
 def prepare_output_dirs(output_dir, num_questions=0, prefix=''):

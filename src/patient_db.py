@@ -14,8 +14,6 @@ from dateutil import rrule
 
 from data_schema import EntityDecoder, EntityEncoder, Event, Patient, Visit
 
-
-
 Match = namedtuple('Match', ['patient_id', 'visit_id', 'event_id', 'event_type', 'role', 'term'])
 
 
