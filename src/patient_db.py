@@ -28,6 +28,7 @@ def now_str():
 
 #### RANKING FUNCTIONS ###
 
+
 def dump_dict(path, d):
     with open(path, 'w') as f:
         dump_str = json.dumps(d)
