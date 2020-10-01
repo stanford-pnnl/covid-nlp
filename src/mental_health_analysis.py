@@ -160,8 +160,8 @@ def mental_health_age_distribution(patients, search_terms, output_dir):
         matched_patients.get_unique_genders(),
         matched_patients_dist_path)
     print(f"matched patients: min_age: {min_age}, max_age: {max_age}")
-    import pdb
-    pdb.set_trace()
+    #import pdb
+    #pdb.set_trace()
     print()
 
     # Calculate age/gener distribution for each monthly split
