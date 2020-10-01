@@ -180,6 +180,13 @@ class PatientDB():
             gender_counter[patient.gender] += 1
         return gender_counter
 
+    def get_patient_ids(self):
+        patient_ids = set()
+        for patient_id in self.data['patients'].keys():
+            patient_ids.add(patient_id)
+        patient_ids = list(patient_ids)
+        return patient_ids
+
     def generate_patients_from_ids(self, patient_ids):
         """Generate patients from list of IDs."""
 
@@ -635,9 +642,20 @@ class PatientDB():
                                         event_type_roles,
                                         cnt_event_type_roles,
                                         entity_levels=None,
-                                        patient_visits=None):
+                                        patient_visits=None,
+                                        patient_ids=None):
         if not entity_levels:
             entity_levels = ['patient', 'visit', 'event']
+        
+        if patient_visits:
+            patient_ids = patient_visits.keys()
+        else:
+            patient_ids = self.get_patient_ids()
+
+        if not patient_ids:
+            print("You must provide some form of patient ids. Exiting...")
+            sys.exit(1)
+
         counters = dict()
         items = dict()
 
@@ -658,7 +676,7 @@ class PatientDB():
 
         debug = False
 
-        for patient_id in patient_visits.keys():
+        for patient_id in patient_ids:
             #print(f"patient_id: {patient_id}")
             patient = self.get_patient_by_id(patient_id)
             if patient_visits:
@@ -666,7 +684,7 @@ class PatientDB():
             else:
                 visit_ids = patient.get_visit_ids()
             # clear patient item counters
-            for event_type, event_roles in event_type_roles.items():
+            for event_type, event_roles in cnt_event_type_roles.items():
                 for role in event_roles:
                     items['patient'][event_type][role].clear()
 
@@ -675,21 +693,21 @@ class PatientDB():
                     print(f"visit_id: {visit_id}")
                 visit = patient.get_visit_by_id(visit_id)
                 # clear visit item counters
-                for event_type, event_roles in event_type_roles.items():
+                for event_type, event_roles in cnt_event_type_roles.items():
                     for role in event_roles:
                         items['visit'][event_type][role].clear()
                 if debug:
                     print("Done clearing visit items")
 
                 for event in visit.events:
-                    for event_type, event_roles in event_type_roles.items():
+                    for event_type, event_roles in cnt_event_type_roles.items():
                         for role in event_roles:
                             items['event'][event_type][role].clear()
                     if debug:
                         print("Done clearing event items")
-                    if event.event_type not in event_type_roles.keys():
+                    if event.event_type not in cnt_event_type_roles.keys():
                         continue
-                    event_roles = event_type_roles[event.event_type]
+                    event_roles = cnt_event_type_roles[event.event_type]
                     for event_role in event_roles:
                         item = event.roles[event_role]
                         # Add item to all item sets
@@ -697,17 +715,17 @@ class PatientDB():
                             items[entity_level][event.event_type][event_role].add(item)
 
                     # Count event items
-                    for event_type, event_roles in event_type_roles.items():
+                    for event_type, event_roles in cnt_event_type_roles.items():
                         for event_role in event_roles:
                             for item in items['event'][event_type][event_role]:
                                 counters['event'][event_type][event_role][item] += 1
                 # Count visit items
-                for event_type, event_roles in event_type_roles.items():
+                for event_type, event_roles in cnt_event_type_roles.items():
                     for event_role in event_roles:
                         for item in items['visit'][event_type][event_role]:
                             counters['visit'][event_type][event_role][item] += 1
             # Count patient items
-            for event_type, event_roles in event_type_roles.items():
+            for event_type, event_roles in cnt_event_type_roles.items():
                 for event_role in event_roles:
                     for item in items['patient'][event_type][event_role]:
                         counters['patient'][event_type][event_role][item] += 1
