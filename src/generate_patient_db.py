@@ -357,7 +357,7 @@ def get_medication_events(patients: PatientDB, df):
     i_max = 1000000
     print(f"Limiting iteration of dataframe to a maximum of {i_max} rows")
     for i, row in enumerate(df.itertuples()):
-        if i % 1000000 == 0:
+        if i % (i_max/10) == 0:
             now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             print(f"{now_str} Tuple: {i}/{i_max}")
         if i >= i_max:
@@ -388,7 +388,7 @@ def get_diagnosis_events(patients: PatientDB, df):
     i_max = 1000000
     print(f"Limiting iteration of dataframe to a maximum of {i_max} rows")
     for i, row in enumerate(df.itertuples()):
-        if i % 1000000 == 0:
+        if i % (i_max/10) == 0:
             now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             print(f"{now_str} Tuple: {i}/{i_max}")
         if i >= i_max:
@@ -563,12 +563,13 @@ def main(args):
 
     #print('Attach visits to patients')
     #patients.attach_visits_to_patients(patient_ids)
-    import pdb
-    pdb.set_trace()
+    #import pdb
+    #pdb.set_trace()
 
     # FIXME
     print('Attach events to visits...')
     patients.attach_events_to_visits()
+    import pdb;pdb.set_trace()
 
     print('Attach demographic information to patients')
     patients.add_demographic_info(demographics, args.use_dask)

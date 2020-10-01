@@ -52,7 +52,7 @@ def run_q7():
 def run_q8():
     print('Running Q8...')
 
-def run_q9(patients, matches, event_type_roles, concepts):
+def run_q9(patients, matches, event_type_roles, concepts, path):
     print('Running Q9...')
     cnt_event_type_roles = dict()
 
@@ -86,6 +86,9 @@ def run_q9(patients, matches, event_type_roles, concepts):
                     values_str = "".join(values_str)
                     print(f"\t\tevent_role: {event_role}\n{values_str}")
     import pdb;pdb.set_trace()
+    with open(path, 'r') as f:
+        dump_str = json.dumps(top_k)
+        f.write(f"{dump_str}\n")
     print()
 
 
@@ -263,7 +266,7 @@ def main(args):
     #run_q8()
 
     # Q9 - What are the top medications prescribed for patients with mental health related issues?
-    run_q9(patients, question_one_matches, question_one_event_type_roles, concepts)
+    run_q9(patients, question_one_matches, question_one_event_type_roles, concepts, output_path)
 
     print("END OF PROGRAM")
 
