@@ -266,7 +266,7 @@ def main(args):
     #run_q8()
 
     # Q9 - What are the top medications prescribed for patients with mental health related issues?
-    run_q9(patients, question_one_matches, question_one_event_type_roles, concepts, output_path)
+    run_q9(patients, question_one_matches, question_one_event_type_roles, concepts, f"{output_dir}/q9/top_k.jsonl")
 
     print("END OF PROGRAM")
 
