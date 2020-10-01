@@ -18,6 +18,7 @@ def prepare_output_dirs(output_dir, num_questions=0, prefix=''):
         print(f'\tAttempting to create: {output_dir}')
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
+
 def concept_id_to_name(concepts, concept_id: int):
     result = concepts[concepts.concept_id == concept_id]
     # FIXME
@@ -54,6 +55,7 @@ def run_q7():
 def run_q8():
     print('Running Q8...')
 
+
 def run_q9(patients, matches, event_type_roles, concepts, path):
     print('Running Q9...')
     cnt_event_type_roles = dict()
@@ -67,8 +69,9 @@ def run_q9(patients, matches, event_type_roles, concepts, path):
     counters = patients.get_event_counters_from_matches(
         matches, event_type_roles, cnt_event_type_roles,
         entity_levels=entity_levels)
-    
-    import pdb;pdb.set_trace()
+
+    import pdb
+    pdb.set_trace()
     print()
 
     # Aggregate counts for each such diagnosis code either based on
@@ -83,12 +86,14 @@ def run_q9(patients, matches, event_type_roles, concepts, path):
             for event_role in sorted(event_roles):
                 values = top_k[entity_level][event_type][event_role]
                 if values:
-                    values = [(concept_id_to_name(concepts, v[0]), v[1]) for v in values] 
+                    values = [(concept_id_to_name(concepts, v[0]), v[1])
+                              for v in values]
                     top_k[entity_level][event_type][event_role] = values
                     values_str = [f"\t\t\t{v}\n" for v in values]
                     values_str = "".join(values_str)
                     print(f"\t\tevent_role: {event_role}\n{values_str}")
-    import pdb;pdb.set_trace()
+    import pdb
+    pdb.set_trace()
     with open(path, 'w') as f:
         dump_str = json.dumps(top_k)
         f.write(f"{dump_str}\n")
@@ -117,7 +122,7 @@ def run_q1(patients, search_terms, path):
     # role counts
     #unique_match_ids = get_unique_match_ids(matches)
     unique_patient_visits = get_unique_match_patient_visits(matches)
-    
+
     cnt_event_type_roles = dict()
 
     # Set up roles to count on by event type data structure
@@ -135,7 +140,6 @@ def run_q1(patients, search_terms, path):
         matches, event_type_roles, cnt_event_type_roles,
         entity_levels=entity_levels, patient_visits=unique_patient_visits)
 
-
     # Aggregate counts for each such diagnosis code either based on
     # the number of visits or number of patients
     print("\nReporting top-k diagnosis roles...")
@@ -151,7 +155,8 @@ def run_q1(patients, search_terms, path):
                     values_str = [f"\t\t\t{v}\n" for v in values]
                     values_str = "".join(values_str)
                     print(f"\t\tevent_role: {event_role}\n{values_str}")
-    import pdb;pdb.set_trace()
+    import pdb
+    pdb.set_trace()
     with open(path, 'w') as f:
         dump_str = json.dumps(top_k)
         f.write(f"{top_k}\n")
@@ -173,7 +178,7 @@ def mental_health_age_distribution(patients, search_terms, output_dir):
 
     # Match patients based on search terms
     matched_patients, matches = patients.match_terms(search_terms, [
-                                            'diagnosis_name', 'concept_text'], ['DiagnosisEvent', 'MEDDRAEvent'])
+        'diagnosis_name', 'concept_text'], ['DiagnosisEvent', 'MEDDRAEvent'])
 
     # Set compare date for age calculation to today
     compare_date = date.today()
@@ -213,8 +218,9 @@ def mental_health_age_distribution(patients, search_terms, output_dir):
 
 def main(args):
     print("START OF PROGRAM\n")
-    #FIXME
-    concepts_paths = [f'/share/pi/stamang/covid/data/concept/concept00000000000{i}.csv' for i in range(3)]
+    # FIXME
+    concepts_paths = [
+        f'/share/pi/stamang/covid/data/concept/concept00000000000{i}.csv' for i in range(3)]
     print("Loading concepts table")
     frames = [get_df(path) for path in concepts_paths]
     concepts = pd.concat(frames, sort=False)
@@ -227,14 +233,13 @@ def main(args):
     # Make sure output dirs are created
     prepare_output_dirs(args.output_dir, num_questions=9, prefix='q')
 
-
-
     # Q1 - What are the co-morbidities associated with mental health?
     question_one_terms = ['depression', 'anxiety', 'insomnia', 'distress']
     question_one_matches,\
         question_one_event_type_roles,\
-            question_one_cnt_event_type_roles = \
-        run_q1(patients, question_one_terms, f"{args.output_dir}/q1/top_k.jsonl")
+        question_one_cnt_event_type_roles = \
+        run_q1(patients, question_one_terms,
+               f"{args.output_dir}/q1/top_k.jsonl")
 
     # Q2 - What is the distribution of age groups for patients with major
     #      depression, anxiety, insomnia or distress?
@@ -255,24 +260,25 @@ def main(args):
     #      (Alzheimers, dementia, mild cognitive impairment) in both Dx Codes
     #      and Clinical notes?
     # WHERE ARE DX CODES?
-    #question_five_terms = ['alzheimers',
+    # question_five_terms = ['alzheimers',
     #                       'dementia', 'mild cognitivie impairment']
     #run_q5(patients, question_five_terms)
 
     # Q6 - What is the mental health trend associated with older adults with
     #      multi-morbiditty conditions?
-    #run_q6(patients)
+    # run_q6(patients)
 
     # Q7 - What are the top reported causes (anger, anxiety, confusion, fear,
     #      guilt, sadness) for mental health related issues?
 
-    #run_q7()
-    
+    # run_q7()
+
     # Q8 - What are the distribution of sentiment for mental health related issues?
-    #run_q8()
+    # run_q8()
 
     # Q9 - What are the top medications prescribed for patients with mental health related issues?
-    run_q9(patients, question_one_matches, question_one_event_type_roles, concepts, f"{args.output_dir}/q9/top_k.jsonl")
+    run_q9(patients, question_one_matches, question_one_event_type_roles,
+           concepts, f"{args.output_dir}/q9/top_k.jsonl")
 
     print("END OF PROGRAM")
 

@@ -231,7 +231,7 @@ class Event(Entity):
                        procedure_name: str = '',
                        targeted_organs: List[str] = None):
         """Procedure event helper."""
-        #FIXME, more elegant way to handle this?
+        # FIXME, more elegant way to handle this?
         if not targeted_organs:
             targeted_organs = []
         self.event_type = "ProcedureEvent"
@@ -469,14 +469,13 @@ class Patient(Entity):
             if visit.visit_id == visit_id:
                 v = visit
         return v
-    
+
     def get_visit_ids(self):
         visit_ids = set()
         for visit in self.visits:
             visit_ids.add(visit.visit_id)
         visit_ids = list(visit_ids)
         return visit_ids
-
 
     def __eq__(self, other):
         """Test if Patient objects are equal."""

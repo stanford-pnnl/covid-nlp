@@ -298,6 +298,8 @@ def get_diagnosis_events_distress(patients: PatientDB, row, date_str,
     return distress_diagnosis_event_found
 
 # FIXME
+
+
 def date_obj_to_str(date_obj):
     date_str = date_obj.strftime("%Y-%m-%d")
     return date_str
@@ -362,15 +364,16 @@ def get_medication_events(patients: PatientDB, df):
             print(f"{now_str} Tuple: {i}/{i_max}")
         if i >= i_max:
             break
-        # FIXME, should events be required to have a single date if 
+        # FIXME, should events be required to have a single date if
         # they are more of an event range?
         patient_id = str(row.person_id)
         date_str = row.drug_exposure_start_DATE
         drug_exposure_event = \
             Event(chartdate=date_str, visit_id=date_str, patient_id=patient_id)
         drug_exposure_event.drug_exposure_role(row)
-        # TODO, convert drug_exposure events to medication events? 
+        # TODO, convert drug_exposure events to medication events?
         patients.add_event(drug_exposure_event)
+
 
 def get_diagnosis_events(patients: PatientDB, df):
     print("Getting diagnosis events...")
@@ -447,7 +450,8 @@ def create_patient_visits(patients: PatientDB, patient_visit_dates):
             print(f"{now_str()} creating visit {i}/len(patient_visit_dates.keys())")
         visit_id = datetime_str
         datetime_obj = datetime_str_to_obj(datetime_str)
-        visit = Visit(patient_id=str(patient_id), visit_id=visit_id, date=datetime_obj)
+        visit = Visit(patient_id=str(patient_id),
+                      visit_id=visit_id, date=datetime_obj)
         entity_id = patients.num_visits()
         patients.add_visit(visit, entity_id=entity_id)
 
@@ -456,10 +460,12 @@ def create_patient_visit_dates(patient_ids, date_strs):
     print('Creating patient visit dates')
     print(f"len(patient_ids): {len(patient_ids)}")
     print(f"len(date_str): {len(date_strs)}")
-    import pdb;pdb.set_trace()
-    #FIXME
-    patient_visit_dates = [(patient_id, date_str) for patient_id, date_str in product(patient_ids, date_strs)]
-    #for patient_id in patient_ids:
+    import pdb
+    pdb.set_trace()
+    # FIXME
+    patient_visit_dates = [(patient_id, date_str)
+                           for patient_id, date_str in product(patient_ids, date_strs)]
+    # for patient_id in patient_ids:
     #    for date_str in date_strs:
     #        visit_id = date_str
     #        date_obj = date_str_to_obj(date_str)
@@ -502,12 +508,12 @@ def get_all_patient_ids(demographics, extractions, medications, use_dask):
     patient_ids = set(patient_ids)
     print(f"extractions: len(patient_ids): {len(patient_ids)}")
     all_patient_ids.update(patient_ids)
-    
+
     med_person_ids = get_person_ids(medications)
     med_person_ids = set(med_person_ids)
     print(f"medications: len(med_person_ids): {len(med_person_ids)}")
     all_patient_ids.update(med_person_ids)
-    
+
     print(f"len(all_patient_ids): {len(all_patient_ids)}")
     return all_patient_ids
 
@@ -551,25 +557,26 @@ def main(args):
     pdb.set_trace()
 
     #print('Get all patient visit dates...')
-    #patient_visit_dates = \
+    # patient_visit_dates = \
     # get_all_patient_visit_dates(patients, meddra_extractions)
     #unique_dates = get_dates(meddra_extractions, args.use_dask)
     #unique_date_strs = [date_obj_to_str(d) for d in unique_dates]
-    #patient_visit_dates = \
+    # patient_visit_dates = \
     #    create_patient_visit_dates(patient_ids, unique_date_strs)
 
     #print('Creating patient visits...')
     #create_patient_visits(patients, patient_visit_dates)
 
     #print('Attach visits to patients')
-    #patients.attach_visits_to_patients(patient_ids)
+    # patients.attach_visits_to_patients(patient_ids)
     #import pdb
-    #pdb.set_trace()
+    # pdb.set_trace()
 
     # FIXME
     print('Attach events to visits...')
     patients.attach_events_to_visits()
-    import pdb;pdb.set_trace()
+    import pdb
+    pdb.set_trace()
 
     print('Attach demographic information to patients')
     patients.add_demographic_info(demographics, args.use_dask)
@@ -595,10 +602,11 @@ if __name__ == '__main__':
                         default='/share/pi/stamang/covid/data/'
                                 'notes_20190901_20200701/labeled_extractions/'
                                 'all_POS_batch000_099.parquet')
-    parser.add_argument('--medications_path', default='/share/pi/stamang/covid/data/drug_exposure/drug_exposure000000000000.csv')
+    parser.add_argument(
+        '--medications_path', default='/share/pi/stamang/covid/data/drug_exposure/drug_exposure000000000000.csv')
     parser.add_argument('--output_dir',
                         default='/home/colbyham/output',
                         help='Path to output directory')  # , required=True)
-    
+
     args: argparse.Namespace = parser.parse_args()
     main(args)
