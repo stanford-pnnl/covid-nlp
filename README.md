@@ -8,11 +8,15 @@ Files:
 	* generate_patient_db.py
 		- Read in meddra extractions from batch files and build patient knowlege graph
 		- Example usage: python src/generate_patient_db.py --output_dir /home/colbyham/covid-nlp/output --use_dask
-	* mental_health_analysis.py
+	* run_mental_health_analysis.py
 		- Load patient knowledge graph from file and perform mental health queries
-		- Example usage: python src/mental_health_analysis.py --patient_db_path /home/colbyham/covid-nlp/output/patients_20200831-050502.jsonl 
+		- Example usage: python src/run_mental_health_analysis.py --patient_db_path /home/colbyham/covid-nlp/output/patients_20200831-050502.jsonl
+    * mental_health_analysis.py
+        - Implementation of mental health queries
 	* patient_db.py
 		- PatientDB class
+	* ExampleNotebook.ipynb
+		- Jupyter notebook version of run_mental_health_analysis.py
 
 Features:
 
