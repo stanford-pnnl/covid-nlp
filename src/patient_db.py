@@ -28,6 +28,11 @@ def now_str():
 
 #### RANKING FUNCTIONS ###
 
+def dump_dict(path, d):
+    with open(path, 'w') as f:
+        dump_str = json.dumps(d)
+        f.write(f"{dump_str}\n")
+
 
 def get_top_k(agg_counts, entity_levels, event_type_roles, k):
     top_k = dict()
@@ -41,6 +46,41 @@ def get_top_k(agg_counts, entity_levels, event_type_roles, k):
                     most_common(k)
 
     return k, top_k
+
+
+def print_top_k(top_k, cnt_event_type_roles, description):
+    for entity_level in top_k:
+        print(f"{description} {entity_level}:")
+        for event_type, event_roles in cnt_event_type_roles.items():
+            print(f"\tEvent type: {event_type}")
+            for event_role in sorted(event_roles):
+                values = top_k[entity_level][event_type][event_role]
+                if values:
+                    values_str = [f"\t\t\t{v}\n" for v in values]
+                    values_str = "".join(values_str)
+                    print(f"\t\tevent_role: {event_role}\n{values_str}")
+
+
+def concept_id_to_name(concepts, concept_id: int):
+    result = concepts[concepts.concept_id == concept_id]
+    # FIXME
+    concept_name = result.iloc[0].concept_name
+    #import pdb;pdb.set_trace()
+    return concept_name
+
+
+def convert_top_k_concept_ids_to_concept_names(top_k, cnt_event_type_roles, concepts):
+    for entity_level in top_k:
+        for event_type, event_roles in cnt_event_type_roles.items():
+            for event_role in sorted(event_roles):
+                values = top_k[entity_level][event_type][event_role]
+                if values:
+                    # Replace value with concept id
+                    values = [(concept_id_to_name(concepts, v[0]), v[1])
+                              for v in values]
+                    top_k[entity_level][event_type][event_role] = values
+    return top_k
+
 
 #### MATCHES FUNCTIONS ###
 
