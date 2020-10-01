@@ -82,17 +82,18 @@ def run_q9(patients, matches, event_type_roles, concepts, path):
                 values = top_k[entity_level][event_type][event_role]
                 if values:
                     values = [(concept_id_to_name(concepts, v[0]), v[1]) for v in values] 
+                    top_k[entity_level][event_type][event_role] = values
                     values_str = [f"\t\t\t{v}\n" for v in values]
                     values_str = "".join(values_str)
                     print(f"\t\tevent_role: {event_role}\n{values_str}")
     import pdb;pdb.set_trace()
-    with open(path, 'r') as f:
+    with open(path, 'w') as f:
         dump_str = json.dumps(top_k)
         f.write(f"{dump_str}\n")
     print()
 
 
-def run_q1(patients, search_terms):
+def run_q1(patients, search_terms, path):
     print("Running Q1...")
     # Find all patients that match at least one of the search terms the roles
     # diagnosis_name or concept_text for DiagnosisEvents and MEDDRAEvents
@@ -149,6 +150,9 @@ def run_q1(patients, search_terms):
                     values_str = "".join(values_str)
                     print(f"\t\tevent_role: {event_role}\n{values_str}")
     import pdb;pdb.set_trace()
+    with open(path, 'w') as f:
+        dump_str = json.dumps(top_k)
+        f.write(f"{top_k}\n")
     print()
     return matches, event_type_roles, cnt_event_type_roles
 
@@ -228,7 +232,7 @@ def main(args):
     question_one_matches,\
         question_one_event_type_roles,\
             question_one_cnt_event_type_roles = \
-        run_q1(patients, question_one_terms)
+        run_q1(patients, question_one_terms, f"{args.output_dir}/q1/top_k.jsonl")
 
     # Q2 - What is the distribution of age groups for patients with major
     #      depression, anxiety, insomnia or distress?
@@ -266,7 +270,7 @@ def main(args):
     #run_q8()
 
     # Q9 - What are the top medications prescribed for patients with mental health related issues?
-    run_q9(patients, question_one_matches, question_one_event_type_roles, concepts, f"{output_dir}/q9/top_k.jsonl")
+    run_q9(patients, question_one_matches, question_one_event_type_roles, concepts, f"{args.output_dir}/q9/top_k.jsonl")
 
     print("END OF PROGRAM")
 
