@@ -3,10 +3,11 @@ import json
 from collections import Counter
 from datetime import date
 from pathlib import Path
+import pandas as pd
 
 from patient_db import (PatientDB, get_top_k, get_unique_match_ids,
                         get_unique_match_patient_visits)
-
+from generate_patient_db import get_df
 
 def prepare_output_dirs(output_dir, num_questions=0, prefix=''):
     print('Preparing output directories...')
@@ -14,6 +15,13 @@ def prepare_output_dirs(output_dir, num_questions=0, prefix=''):
         output_dir = f"{args.output_dir}/q{num_q}"
         print(f'\tAttempting to create: {output_dir}')
         Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+def concept_id_to_name(concepts, concept_id: int):
+    result = concepts[concepts.concept_id == concept_id]
+    # FIXME
+    concept_name = result.iloc[0].concept_name
+    #import pdb;pdb.set_trace()
+    return concept_name
 
 
 def run_q2(patients, search_terms, output_dir):
@@ -44,7 +52,7 @@ def run_q7():
 def run_q8():
     print('Running Q8...')
 
-def run_q9(patients, matches, event_type_roles):
+def run_q9(patients, matches, event_type_roles, concepts):
     print('Running Q9...')
     cnt_event_type_roles = dict()
 
@@ -58,6 +66,25 @@ def run_q9(patients, matches, event_type_roles):
         matches, event_type_roles, cnt_event_type_roles,
         entity_levels=entity_levels)
     
+    import pdb;pdb.set_trace()
+    print()
+
+    # Aggregate counts for each such diagnosis code either based on
+    # the number of visits or number of patients
+    print("\nReporting top-k DRUG_EXPOSURE roles...")
+    k, top_k = get_top_k(counters, entity_levels, cnt_event_type_roles, k=20)
+
+    for entity_level in top_k:
+        print(f"Top {k} diagnosis roles per {entity_level}:")
+        for event_type, event_roles in cnt_event_type_roles.items():
+            print(f"\tEvent type: {event_type}")
+            for event_role in sorted(event_roles):
+                values = top_k[entity_level][event_type][event_role]
+                if values:
+                    values = [(concept_id_to_name(concepts, v[0]), v[1]) for v in values] 
+                    values_str = [f"\t\t\t{v}\n" for v in values]
+                    values_str = "".join(values_str)
+                    print(f"\t\tevent_role: {event_role}\n{values_str}")
     import pdb;pdb.set_trace()
     print()
 
@@ -98,9 +125,9 @@ def run_q1(patients, search_terms):
     cnt_event_type_roles['MEDDRAEvent'].add('concept_text')
 
     entity_levels = ['patient', 'visit', 'event']
-    counters = patients.get_counters_from_matches(
-        matches, unique_patient_visits, event_type_roles, cnt_event_type_roles,
-        entity_levels=entity_levels)
+    counters = patients.get_event_counters_from_matches(
+        matches, event_type_roles, cnt_event_type_roles,
+        entity_levels=entity_levels, patient_visits=unique_patient_visits)
 
 
     # Aggregate counts for each such diagnosis code either based on
@@ -177,12 +204,21 @@ def mental_health_age_distribution(patients, search_terms, output_dir):
 
 def main(args):
     print("START OF PROGRAM\n")
+    #FIXME
+    concepts_paths = [f'/share/pi/stamang/covid/data/concept/concept00000000000{i}.csv' for i in range(3)]
+    print("Loading concepts table")
+    frames = [get_df(path) for path in concepts_paths]
+    concepts = pd.concat(frames, sort=False)
+    #import pdb;pdb.set_trace()
+
     # Create and load an instance of PatientDB
     patients = PatientDB(name='all')
     patients.load(args.patient_db_path)
 
     # Make sure output dirs are created
     prepare_output_dirs(args.output_dir, num_questions=9, prefix='q')
+
+
 
     # Q1 - What are the co-morbidities associated with mental health?
     question_one_terms = ['depression', 'anxiety', 'insomnia', 'distress']
@@ -227,7 +263,7 @@ def main(args):
     #run_q8()
 
     # Q9 - What are the top medications prescribed for patients with mental health related issues?
-    run_q9(patients, question_one_matches, question_one_event_type_roles)
+    run_q9(patients, question_one_matches, question_one_event_type_roles, concepts)
 
     print("END OF PROGRAM")
 
