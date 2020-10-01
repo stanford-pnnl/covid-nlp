@@ -460,8 +460,8 @@ def create_patient_visit_dates(patient_ids, date_strs):
     print('Creating patient visit dates')
     print(f"len(patient_ids): {len(patient_ids)}")
     print(f"len(date_str): {len(date_strs)}")
-    import pdb
-    pdb.set_trace()
+    #import pdb
+    #pdb.set_trace()
     # FIXME
     patient_visit_dates = [(patient_id, date_str)
                            for patient_id, date_str in product(patient_ids, date_strs)]
@@ -553,8 +553,8 @@ def main(args):
 
     print('Generate patients from IDs')
     patients.generate_patients_from_ids(patient_ids)
-    import pdb
-    pdb.set_trace()
+    #import pdb
+    #pdb.set_trace()
 
     #print('Get all patient visit dates...')
     # patient_visit_dates = \
@@ -575,19 +575,19 @@ def main(args):
     # FIXME
     print('Attach events to visits...')
     patients.attach_events_to_visits()
-    import pdb
-    pdb.set_trace()
+    #import pdb
+    #pdb.set_trace()
 
     print('Attach demographic information to patients')
     patients.add_demographic_info(demographics, args.use_dask)
-    import pdb
-    pdb.set_trace()
+    #import pdb
+    #pdb.set_trace()
 
     print('Dump patients to a file')
     patients.dump(args.output_dir, "patients", "jsonl", unique=True)
 
-    import pdb
-    pdb.set_trace()
+    #import pdb
+    #pdb.set_trace()
     print()
 
 
