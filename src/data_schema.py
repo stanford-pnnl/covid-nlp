@@ -1,11 +1,6 @@
-import logging
-import math
-import os
-import re
-import sys
 from datetime import date, datetime
 from json import JSONDecoder, JSONEncoder
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 from backports.datetime_fromisoformat import MonkeyPatch
 
@@ -24,6 +19,7 @@ class EntityDecoder(JSONDecoder):
         JSONDecoder.__init__(self, object_hook=self.object_hook, *args,
                              **kwargs)
 
+    # TODO: refactor this function
     def object_hook(self, obj):
         """Decode based on object type."""
         if '__type__' in obj:
@@ -349,11 +345,10 @@ class Event(Entity):
             return NotImplemented
         chartdate_equal = self.chartdate == other.chartdate
         event_type_equal = self.event_type == other.event_type
-        provenance_equal = self.provenance == other.provenance
         roles_equal = self.roles == other.roles
 
         event_equal = chartdate_equal and event_type_equal and \
-            provenance_equal and roles_equal
+            roles_equal
         return event_equal
 
     def __str__(self, sep="  ", indent1=4, indent2=5):
@@ -391,7 +386,7 @@ class Visit(Entity):
 
     def num_events(self):
         num_events = 0
-        for event in self.events:
+        for _ in self.events:
             num_events += 1
         return num_events
 
@@ -401,11 +396,9 @@ class Visit(Entity):
         if not isinstance(other, Visit):
             # don't attempt to compare against unrelated types
             return NotImplemented
-        hadm_id_equal = self.hadm_id == other.hadm_id
-        provenance_equal = self.provenance == other.provenance
         events_equal = sorted(self.events) == sorted(other.events)
 
-        visit_equal = hadm_id_equal and provenance_equal and events_equal
+        visit_equal = events_equal
         return visit_equal
 
     def __str__(self, sep="  ", indent1=2, indent2=3):
@@ -445,7 +438,7 @@ class Patient(Entity):
         self.gender: str = patient_gender
         self.race: str = patient_race
         self.smoker: bool = patient_smoker
-        #self.birth_datetime = None
+        # self.birth_datetime = None
 
         # TODO, make sure visits are unique
         self.visits: List[Visit] = []
@@ -463,7 +456,7 @@ class Patient(Entity):
 
         return num_events
 
-    def get_visit_by_id(self, visit_id: str) -> Visit:
+    def get_visit_by_id(self, visit_id: str) -> Optional[Visit]:
         v = None
         for visit in self.visits:
             if visit.visit_id == visit_id:

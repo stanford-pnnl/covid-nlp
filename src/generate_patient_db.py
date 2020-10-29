@@ -1,9 +1,5 @@
 import argparse
-import glob
-import json
-import os
 import sys
-import time
 from collections import Counter
 from datetime import date, datetime
 from itertools import product
@@ -32,8 +28,10 @@ def get_df(path, use_dask=False):
         elif '.hdf' in path:
             df = pd.read_hdf(path)
         elif '.csv' in path:
-            # FIXME, files that are gzipped need to have the correct extension .gz
-            df = pd.read_csv(path, compression='gzip')
+            # FIXME, files that are gzipped need to have the correct extension
+            # .gz
+            df = pd.read_csv(path,
+                             compression='gzip')
         else:
             print(f"Unhandled path, no matching file extension: {path}")
             sys.exit(1)
@@ -239,7 +237,7 @@ def get_diagnosis_events_insomnia(patients: PatientDB, row, date_str,
         'Psychophysiologi insomnia',
         'Terminal insomnia']
 
-    #Match(SOC="*", HLGT="cardiac_valve_disorders", HLT="", PT="")
+    # Match(SOC="*", HLGT="cardiac_valve_disorders", HLT="", PT="")
     PT_text = row.PT_text
     concept_text = row.concept_text
 
@@ -359,7 +357,7 @@ def get_medication_events(patients: PatientDB, df):
     i_max = 1000000
     print(f"Limiting iteration of dataframe to a maximum of {i_max} rows")
     for i, row in enumerate(df.itertuples()):
-        if i % (i_max/10) == 0:
+        if i % (i_max / 10) == 0:
             now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             print(f"{now_str} Tuple: {i}/{i_max}")
         if i >= i_max:
@@ -391,7 +389,7 @@ def get_diagnosis_events(patients: PatientDB, df):
     i_max = 1000000
     print(f"Limiting iteration of dataframe to a maximum of {i_max} rows")
     for i, row in enumerate(df.itertuples()):
-        if i % (i_max/10) == 0:
+        if i % (i_max / 10) == 0:
             now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             print(f"{now_str} Tuple: {i}/{i_max}")
         if i >= i_max:
@@ -444,18 +442,6 @@ def get_events(patients: PatientDB, diagnosis_df, medication_df):
     get_medication_events(patients, medication_df)
 
 
-def create_patient_visits(patients: PatientDB, patient_visit_dates):
-    for i, patient_id, datetime_str in enumerate(patient_visit_dates):
-        if i % 10000 == 0:
-            print(f"{now_str()} creating visit {i}/len(patient_visit_dates.keys())")
-        visit_id = datetime_str
-        datetime_obj = datetime_str_to_obj(datetime_str)
-        visit = Visit(patient_id=str(patient_id),
-                      visit_id=visit_id, date=datetime_obj)
-        entity_id = patients.num_visits()
-        patients.add_visit(visit, entity_id=entity_id)
-
-
 def create_patient_visit_dates(patient_ids, date_strs):
     print('Creating patient visit dates')
     print(f"len(patient_ids): {len(patient_ids)}")
@@ -463,8 +449,9 @@ def create_patient_visit_dates(patient_ids, date_strs):
     #import pdb
     #pdb.set_trace()
     # FIXME
-    patient_visit_dates = [(patient_id, date_str)
-                           for patient_id, date_str in product(patient_ids, date_strs)]
+    patient_visit_dates = \
+        [(patient_id, date_str)
+         for patient_id, date_str in product(patient_ids, date_strs)]
     # for patient_id in patient_ids:
     #    for date_str in date_strs:
     #        visit_id = date_str
@@ -603,7 +590,9 @@ if __name__ == '__main__':
                                 'notes_20190901_20200701/labeled_extractions/'
                                 'all_POS_batch000_099.parquet')
     parser.add_argument(
-        '--medications_path', default='/share/pi/stamang/covid/data/drug_exposure/drug_exposure000000000000.csv')
+        '--medications_path',
+        default='/share/pi/stamang/covid/data/drug_exposure/'
+                'drug_exposure000000000000.csv')
     parser.add_argument('--output_dir',
                         default='/home/colbyham/output',
                         help='Path to output directory')  # , required=True)

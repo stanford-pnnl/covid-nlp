@@ -15,7 +15,8 @@ from dateutil import rrule
 from data_schema import EntityDecoder, EntityEncoder, Event, Patient, Visit
 
 Match = namedtuple(
-    'Match', ['patient_id', 'visit_id', 'event_id', 'event_type', 'role', 'term'])
+    'Match', ['patient_id', 'visit_id', 'event_id', 'event_type', 'role',
+              'term'])
 
 
 def date_str_to_obj(date_str):
@@ -26,7 +27,6 @@ def date_str_to_obj(date_str):
 def now_str():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-#### RANKING FUNCTIONS ###
 
 def dump_dict(path, d):
     print(f"Dumping dict to {path}")
@@ -70,7 +70,8 @@ def concept_id_to_name(concepts, concept_id: int):
     return concept_name
 
 
-def convert_top_k_concept_ids_to_concept_names(top_k, cnt_event_type_roles, concepts):
+def convert_top_k_concept_ids_to_concept_names(top_k, cnt_event_type_roles,
+                                               concepts):
     for entity_level in top_k:
         for event_type, event_roles in cnt_event_type_roles.items():
             for event_role in sorted(event_roles):
@@ -81,9 +82,6 @@ def convert_top_k_concept_ids_to_concept_names(top_k, cnt_event_type_roles, conc
                               for v in values]
                     top_k[entity_level][event_type][event_role] = values
     return top_k
-
-
-#### MATCHES FUNCTIONS ###
 
 
 def get_unique_match_ids(matches):
@@ -113,7 +111,7 @@ def get_unique_match_patient_visits(matches):
 
 
 class PatientDB():
-    "Database composed of patient->visit->event relationships"
+    """Database composed of patient->visit->event relationships."""
 
     def __init__(self, name=""):
         self.name = name
@@ -139,7 +137,7 @@ class PatientDB():
         return s
 
     def reproduce(self, name=''):
-        """Create a new PatientDB inside an existing PatientDB class"""
+        """Create a new PatientDB inside an existing PatientDB class."""
         return PatientDB(name=name)
 
     def load(self, path):
@@ -189,19 +187,19 @@ class PatientDB():
                     #print(f"Failed to dump patient {key}")
         print(f"{c}")
 
-    def num_entities(self, entity):
+    def num_entities(self, entity) -> int:
         return len(self.data[entity].keys())
 
-    def num_patients(self):
+    def num_patients(self) -> int:
         return self.num_entities('patients')
 
-    def num_visits(self):
+    def num_visits(self) -> int:
         return self.num_entities('visits')
 
-    def num_events(self):
+    def num_events(self) -> int:
         return self.num_entities('events')
 
-    def num_visits_iter(self):
+    def num_visits_iter(self) -> int:
         num_visits = 0
         for patient in self.patients:
             num_visits += patient.num_visits()
@@ -272,9 +270,9 @@ class PatientDB():
 
         if not available_entity_keys:
             # Adding new key to full dict
-            events_key = self.num_entities(entity)
+            events_key = str(self.num_entities(entity))
         else:
-            events_key = random.choice(list(available_entity_keys))
+            events_key = str(random.choice(list(available_entity_keys)))
 
         return events_key
 
@@ -290,7 +288,7 @@ class PatientDB():
         if not entity_id:
             # FIXME
             #entity_id = self.find_empty_entity_key('events')
-            entity_id = self.num_entities('events')
+            entity_id = str(self.num_entities('events'))
         event.entity_id = entity_id
         self.data['events'][entity_id] = event
         return event
@@ -299,7 +297,7 @@ class PatientDB():
         if not entity_id:
             # FIXME, seems slow
             #entity_id = self.find_empty_entity_key('visits')
-            entity_id = self.num_entities('visits')
+            entity_id = str(self.num_entities('visits'))
         visit.entity_id = entity_id
         added_events = []
         # Add events nested in visit
@@ -313,7 +311,7 @@ class PatientDB():
     def add_patient(self, patient: Patient, entity_id: str = None):
         if not entity_id:
             #entity_id = self.find_empty_entity_key('patients')
-            entity_id = self.num_entities('patients')
+            entity_id = str(self.num_entities('patients'))
         patient.entity_id = entity_id
         entity_id_patient = self.data['patients'].get(entity_id)
         if entity_id_patient:
@@ -970,7 +968,9 @@ class PatientDB():
                     date_str = event.visit_id
                     date_obj = date_str_to_obj(date_str)
                     visit = Visit(
-                        date=date_obj, visit_id=event.visit_id, patient_id=event.patient_id)
+                        date=date_obj,
+                        visit_id=event.visit_id,
+                        patient_id=event.patient_id)
                     visit = self.add_visit(visit)
                     patient.visits.append(visit)
                 visit.events.append(event)
@@ -1017,8 +1017,8 @@ class PatientDB():
             matches = matches.union(term_matches)
             unique_match_ids = get_unique_match_ids(matches)
             num_term_patients_matched = len(unique_match_ids['patient'])
-            print(
-                f"term: {term}, num_matches: {len(term_matches)}, num_term_patients_matched: {num_term_patients_matched}")
+            print(f"term: {term}, num_matches: {len(term_matches)}, "
+                  f"num_term_patients_matched: {num_term_patients_matched}")
         return matches
 
     def generate_from_matches(self, matches, name=''):
