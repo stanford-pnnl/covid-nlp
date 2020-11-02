@@ -40,6 +40,21 @@ def get_df(path, use_dask=False):
     return df
 
 
+def get_df_frames(df_frames_dir, use_dask=False, debug=False):
+    paths = [path for path in os.listdir(df_frames_dir)]
+    paths_full = [os.path.join(df_frames_dir, path) for path in paths]
+    # Only load one frame for debug mode
+    if debug:
+        paths_full = [paths_full[0]]
+    print("Attempting to read df from paths: ")
+    for path in paths_full:
+        print(f"\t{path}")
+    df_frames = [get_df(path, use_dask) for path in paths_full]
+    df = pd.concat(df_frames, sort=False)
+    print("Successfully read dataframe from paths")
+    return df
+
+
 def get_person_ids(df, use_dask=False):
     unique_person_ids = df.person_id.unique()
     if use_dask:
@@ -345,6 +360,27 @@ def count_column_values(row, counter):
     counter['present'][row.present] += 1
     counter['ttype'][row.ttype] += 1
 
+def get_concept(df, concept_id):
+    concept = df[df.concept_id == concept_id].iloc[0]
+    return concept
+
+
+def get_concept_name(df, concept_id) -> str:
+    concept = get_concept(df, concept_id)
+    concept_name = concept.concept_name
+    return concept_name
+
+
+def get_concept_class_id(df, concept_id) -> str:
+    concept = get_concept(df, concept_id)
+    concept_class_id = concept.concept_class_id
+    return concept_class_id
+
+def print_concept(df, concept_id):
+    concept = get_concept(df, concept_id)
+    print(concept)
+    return concept
+
 
 def get_medication_events(patients: PatientDB, concept_df, df):
     print("Getting medication events...")
@@ -368,18 +404,36 @@ def get_medication_events(patients: PatientDB, concept_df, df):
         patient_id = str(row.person_id)
         date_str = row.drug_exposure_start_DATE
 
-        dose_unit_concept_id = row.dose_unit_concept_id
+        #dose_unit_concept_id = row.dose_unit_concept_id
         drug_concept_id = row.drug_concept_id
-        drug_source_concept_id = row.drug_source_concept_id
-        drug_type_concept_id = row.drug_type_concept_id
-        route_concept_id = row.route_concept_id
+        drug_concept_name = get_concept_name(concept_df, drug_concept_id)
+        drug_concept_class_id = \
+            get_concept_class_id(concept_df, drug_concept_id)
+        # Skip rows that aren't prescription drugs
+        if drug_concept_class_id != 'Prescription Drug':
+            continue
 
-        import pdb;pdb.set_trace()
+        drug_source_concept_id = row.drug_source_concept_id
+        drug_source_concept_name = \
+            get_concept_name(concept_df, drug_source_concept_id)
+
+        # We could drop 'Patient Self-Reported Medication'?
+        # The Drug era categories aren't clear
+        drug_type_concept_id = row.drug_type_concept_id
+        drug_type_concept_name = \
+            get_concept_name(concept_df, drug_type_concept_id)
+
+        route_concept_id = row.route_concept_id
+        route_concept_name = get_concept_name(concept_df, route_concept_id)
+
+        #import pdb;pdb.set_trace()
 
         # Make sure it is a drug event by checking the concept table
         drug_exposure_event = \
             Event(chartdate=date_str, visit_id=date_str, patient_id=patient_id)
-        drug_exposure_event.drug_exposure_role(row)
+        drug_exposure_event.drug_exposure_role(
+            row, drug_concept_name, drug_source_concept_name,
+            drug_type_concept_name, route_concept_name)
         # TODO, convert drug_exposure events to medication events?
         patients.add_event(drug_exposure_event)
 
@@ -517,17 +571,6 @@ def get_all_patient_ids(demographics, extractions, drug_exposure, use_dask):
     return all_patient_ids
 
 
-def get_df_frames(df_frames_dir, use_dask=False, debug=False):
-    paths = [path for path in os.listdir(df_frames_dir)]
-    paths_full = [os.path.join(df_frames_dir, path) for path in paths]
-    # Only load one frame for debug mode
-    if debug:
-        paths_full = paths_full[0]
-    df_frames = [get_df(path, use_dask) for path in paths_full]
-    df = pd.concat(df_frames, sort=False)
-    return df
-
-
 def omop_drug_exposure(drug_exposure_dir, use_dask=False, debug=False):
     drug_exposure = get_df_frames(drug_exposure_dir, use_dask, debug)
     return drug_exposure
@@ -540,7 +583,7 @@ def omop_concept(concept_dir, use_dask=False):
 
 def main(args):
     # Setup variables
-    print(f"args: {args}")
+    print(f"\nargs: {args}\n")
 
     # Create patient DB to store data
     patients = PatientDB(name='all')
@@ -556,7 +599,7 @@ def main(args):
     ### OMOP TABLES ###
     # OMOP DRUG_EXPOSURE table
     drug_exposure = \
-        omop_drug_exposure(args.drug_exposure_path, args.use_dask, args.debug)
+        omop_drug_exposure(args.drug_exposure_dir, args.use_dask, args.debug)
 
     # OMOP CONCEPT table
     concept = omop_concept(args.concept_dir, args.use_dask)
@@ -620,14 +663,17 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+
     # Bools
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--use_dask', action='store_true')
     parser.add_argument('--sample_column_values', action='store_true')
+
     # Paths
     parser.add_argument('--demographics_path',
                         default='/share/pi/stamang/covid/data/demo/'
                                 'demo_all_pts.parquet')
+
     parser.add_argument('--meddra_extractions_path',
                         default='/share/pi/stamang/covid/data/'
                                 'notes_20190901_20200701/labeled_extractions/'
@@ -636,15 +682,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--drug_exposure_dir',
         default='/share/pi/stamang/covid/data/drug_exposure')
-
     parser.add_argument(
         '--concept_dir',
-        default='/share/pi/stamang/covid/data/concept'
-    )
-
-    parser.add_argument('--output_dir',
-                        default='/home/colbyham/output',
-                        help='Path to output directory')  # , required=True)
+        default='/share/pi/stamang/covid/data/concept')
+    parser.add_argument(
+        '--output_dir',
+        default='/home/colbyham/output',
+        help='Path to output directory')  # , required=True)
 
     args: argparse.Namespace = parser.parse_args()
     main(args)
