@@ -158,7 +158,7 @@ class EntityEncoder(JSONEncoder):
         }
 
 
-class Entity():
+class Entity(object):
     """Base entity class."""
 
     def __init__(self,
@@ -180,7 +180,7 @@ class Event(Entity):
                  chartdate: str = "",
                  event_type: str = ""):
         """Initialize Event."""
-        Entity.__init__(self, entity_type=ETYPE_EVENT)
+        super(Event, self).__init__(entity_type=ETYPE_EVENT)
         # IDs
         self.event_id: str = event_id
         self.visit_id: str = visit_id
@@ -377,7 +377,7 @@ class Visit(Entity):
                  visit_id: str = "",
                  patient_id: str = ""):
         """Initialize Visit."""
-        Entity.__init__(self, entity_type=ETYPE_VISIT)
+        super(Visit, self).__init__(entity_type=ETYPE_VISIT)
         self.visit_id: str = visit_id
         self.patient_id: str = patient_id
         # TODO: make sure date is a datetime obj
@@ -429,7 +429,7 @@ class Patient(Entity):
                  patient_adult: bool = False,
                  patient_smoker: bool = False):
         """Initialize Patient."""
-        Entity.__init__(self, entity_type=ETYPE_PATIENT)
+        super(Patient, self).__init__(entity_type=ETYPE_PATIENT)
         self.patient_id: str = patient_id
         self.adult: bool = patient_adult
         self.age: Any = patient_age
