@@ -371,10 +371,10 @@ def get_concept_name(df, concept_id) -> str:
     return concept_name
 
 
-def get_concept_class_id(df, concept_id) -> str:
+def get_concept_class_id(df, concept_id):
     concept = get_concept(df, concept_id)
     concept_class_id = concept.concept_class_id
-    return concept_class_id
+    return concept_class_id, concept
 
 def print_concept(df, concept_id):
     concept = get_concept(df, concept_id)
@@ -389,11 +389,33 @@ def get_medication_events(patients: PatientDB, concept_df, df):
     for column in column_names:
         columns[column] = Counter()
     print(df.head())
+
+
+    #new_df = df.join(concept_df.set_index('concept_id'), on='drug_concept_id', how="left", ruffix="")
+    new_df = pd.merge(
+        df, concept_df, how="left", left_on="drug_concept_id",
+        right_on="concept_id", suffixes=('', '_right'))
+
+    drug_concept_class_ids = set()
+    accepted_drug_concept_class_ids = set()
+    #accepted_drug_concept_class_ids.add('Prescription Drug')
+    #accepted_drug_concept_class_ids.add('Ingredient')
+    #accepted_drug_concept_class_ids.add('CVX')
+    #accepted_drug_concept_class_ids.add('Undefined')
+    #accepted_drug_concept_class_ids.add('Drug Product')
+    #accepted_drug_concept_class_ids.add('Branded Drug')
+    #accepted_drug_concept_class_ids.add('Branded Drug Form')
+    accepted_drug_concept_class_ids.add('Clinical Drug')
+    #accepted_drug_concept_class_ids.add('Clinical Drug Comp')
+    # Quantity first in string
+    #accepted_drug_concept_class_ids.add('Quant Clinical Drug')
+
+
     # FIXME
     # get medication events from drug_exposure table
     i_max = 1000000
     print(f"Limiting iteration of dataframe to a maximum of {i_max} rows")
-    for i, row in enumerate(df.itertuples()):
+    for i, row in enumerate(new_df.itertuples()):
         if i % (i_max / 10) == 0:
             now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             print(f"{now_str} Tuple: {i}/{i_max}")
@@ -404,38 +426,47 @@ def get_medication_events(patients: PatientDB, concept_df, df):
         patient_id = str(row.person_id)
         date_str = row.drug_exposure_start_DATE
 
+        #import pdb;pdb.set_trace()
+
         #dose_unit_concept_id = row.dose_unit_concept_id
         drug_concept_id = row.drug_concept_id
-        drug_concept_name = get_concept_name(concept_df, drug_concept_id)
-        drug_concept_class_id = \
-            get_concept_class_id(concept_df, drug_concept_id)
+        drug_concept_class_id = row.concept_class_id
         # Skip rows that aren't prescription drugs
-        if drug_concept_class_id != 'Prescription Drug':
+
+        if drug_concept_class_id not in accepted_drug_concept_class_ids:
+            #if drug_concept_class_id not in drug_concept_class_ids:
+            #    drug_concept_class_ids.add(drug_concept_class_id)
+            #    print(f"{drug_concept_class_id} != 'Prescription Drug'")
             continue
 
+        drug_concept_name = row.concept_name
+        #drug_concept_name = get_concept_name(concept_df, drug_concept_id)
+        #if drug_concept_class_id != 'Clinical Drug':
+        #    print(f"drug_concept_class_id: {drug_concept_class_id}, "
+        #          f"drug_concept_name: {drug_concept_name}")
+
         drug_source_concept_id = row.drug_source_concept_id
-        drug_source_concept_name = \
-            get_concept_name(concept_df, drug_source_concept_id)
+        #drug_source_concept_name = \
+        #    get_concept_name(concept_df, drug_source_concept_id)
 
         # We could drop 'Patient Self-Reported Medication'?
         # The Drug era categories aren't clear
         drug_type_concept_id = row.drug_type_concept_id
-        drug_type_concept_name = \
-            get_concept_name(concept_df, drug_type_concept_id)
+        #drug_type_concept_name = \
+        #    get_concept_name(concept_df, drug_type_concept_id)
 
         route_concept_id = row.route_concept_id
-        route_concept_name = get_concept_name(concept_df, route_concept_id)
+        #route_concept_name = get_concept_name(concept_df, route_concept_id)
 
         #import pdb;pdb.set_trace()
 
         # Make sure it is a drug event by checking the concept table
         drug_exposure_event = \
             Event(chartdate=date_str, visit_id=date_str, patient_id=patient_id)
-        drug_exposure_event.drug_exposure_role(
-            row, drug_concept_name, drug_source_concept_name,
-            drug_type_concept_name, route_concept_name)
+        drug_exposure_event.drug_exposure_role(row, drug_concept_name)
         # TODO, convert drug_exposure events to medication events?
         patients.add_event(drug_exposure_event)
+    print(f"drug_concept_class_ids: {drug_concept_class_ids}")
 
 
 def get_diagnosis_events(patients: PatientDB, df):
@@ -578,6 +609,10 @@ def omop_drug_exposure(drug_exposure_dir, use_dask=False, debug=False):
 
 def omop_concept(concept_dir, use_dask=False):
     concept = get_df_frames(concept_dir, use_dask)
+    # set index to int concept_id
+    concept.set_index('concept_id')
+    # Sort by index
+    concept.sort_index(inplace=True)
     return concept
 
 
