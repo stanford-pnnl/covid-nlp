@@ -262,9 +262,9 @@ class Event(Entity):
         self.event_type = "CONDITION_OCCURENCE"
         self.add_condition_occurence_roles(row)
 
-    def drug_exposure_role(self, row):
+    def drug_exposure_role(self, row, drug_concept_name):
         self.event_type = "DRUG_EXPOSURE"
-        self.add_drug_exposure_roles(row)
+        self.add_drug_exposure_roles(row, drug_concept_name)
 
     def add_meddra_roles(self, row):
         # Meddra levels
@@ -307,9 +307,7 @@ class Event(Entity):
         self.roles['condition_end_datetime'] = row.condition_end_datetime
         self.roles['condition_type_concept_id'] = row.condition_type_concept_id
 
-    def add_drug_exposure_roles(self, row, drug_concept_name,
-                                drug_source_concept_name,
-                                drug_type_concept_name, route_concept_name):
+    def add_drug_exposure_roles(self, row, drug_concept_name):
         self.roles['drug_exposure_id'] = row.drug_exposure_id
         self.roles['person_id'] = row.person_id
         self.roles['drug_concept_id'] = row.drug_concept_id
@@ -326,7 +324,7 @@ class Event(Entity):
         self.roles['drug_type_concept_id'] = row.drug_type_concept_id
         #drug_type_concept_name = \
         #    get_concept_name(concept_df, row.drug_type_concept_id)
-        self.roles['drug_type_concept_name'] = drug_type_concept_name
+        #self.roles['drug_type_concept_name'] = drug_type_concept_name
 
         self.roles['stop_reason'] = row.stop_reason
         self.roles['refills'] = row.refills
@@ -335,7 +333,7 @@ class Event(Entity):
         self.roles['sig'] = row.sig
         self.roles['route_concept_id'] = row.route_concept_id
         #route_concept_name = get_concept_name(concept_df, row.route_concept_id)
-        self.roles['route_concept_name'] = route_concept_name
+        #self.roles['route_concept_name'] = route_concept_name
 
         self.roles['lot_number'] = row.lot_number
         self.roles['provider_id'] = row.provider_id
@@ -345,7 +343,7 @@ class Event(Entity):
         self.roles['drug_source_concept_id'] = row.drug_source_concept_id
         #drug_source_concept_name = \
         #    get_concept_name(concept_df, row.drug_source_concept_id)
-        self.roles['drug_source_concept_name'] = drug_source_concept_name
+        #self.roles['drug_source_concept_name'] = drug_source_concept_name
 
         self.roles['route_source_value'] = row.route_source_value
         self.roles['dose_unit_source_value'] = row.dose_unit_source_value
