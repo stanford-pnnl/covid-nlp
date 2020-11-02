@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 from collections import Counter
 from datetime import date, datetime
@@ -12,9 +13,9 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pyarrow
 from tqdm import tqdm
 
-import pyarrow
 from data_schema import EntityEncoder, Event, Patient, Visit
 from patient_db import PatientDB
 
@@ -345,7 +346,7 @@ def count_column_values(row, counter):
     counter['ttype'][row.ttype] += 1
 
 
-def get_medication_events(patients: PatientDB, df):
+def get_medication_events(patients: PatientDB, concept_df, df):
     print("Getting medication events...")
     columns: Dict[str, Counter] = dict()
     column_names = df.columns.tolist()
@@ -366,6 +367,16 @@ def get_medication_events(patients: PatientDB, df):
         # they are more of an event range?
         patient_id = str(row.person_id)
         date_str = row.drug_exposure_start_DATE
+
+        dose_unit_concept_id = row.dose_unit_concept_id
+        drug_concept_id = row.drug_concept_id
+        drug_source_concept_id = row.drug_source_concept_id
+        drug_type_concept_id = row.drug_type_concept_id
+        route_concept_id = row.route_concept_id
+
+        import pdb;pdb.set_trace()
+
+        # Make sure it is a drug event by checking the concept table
         drug_exposure_event = \
             Event(chartdate=date_str, visit_id=date_str, patient_id=patient_id)
         drug_exposure_event.drug_exposure_role(row)
@@ -433,13 +444,14 @@ def get_diagnosis_events(patients: PatientDB, df):
     #import pdb;pdb.set_trace()
 
 
-def get_events(patients: PatientDB, diagnosis_df, medication_df):
+def get_events(patients: PatientDB, omop_concept_df, diagnosis_df,
+               omop_drug_exposure_df):
     print("Getting events...")
     print("Getting diagnosis events")
     get_diagnosis_events(patients, diagnosis_df)
 
     print("Getting medication events")
-    get_medication_events(patients, medication_df)
+    get_medication_events(patients, omop_concept_df, omop_drug_exposure_df)
 
 
 def create_patient_visit_dates(patient_ids, date_strs):
@@ -482,7 +494,7 @@ def get_all_patient_visit_dates(patients: PatientDB, df):
     return patient_visit_dates
 
 
-def get_all_patient_ids(demographics, extractions, medications, use_dask):
+def get_all_patient_ids(demographics, extractions, drug_exposure, use_dask):
     all_patient_ids = set()
 
     demo_person_ids = get_person_ids(demographics, use_dask)
@@ -496,13 +508,34 @@ def get_all_patient_ids(demographics, extractions, medications, use_dask):
     print(f"extractions: len(patient_ids): {len(patient_ids)}")
     all_patient_ids.update(patient_ids)
 
-    med_person_ids = get_person_ids(medications)
-    med_person_ids = set(med_person_ids)
-    print(f"medications: len(med_person_ids): {len(med_person_ids)}")
-    all_patient_ids.update(med_person_ids)
+    drug_exposure_person_ids = get_person_ids(drug_exposure)
+    drug_exposure_person_ids = set(drug_exposure_person_ids)
+    print(f"medications: len(med_person_ids): {len(drug_exposure_person_ids)}")
+    all_patient_ids.update(drug_exposure_person_ids)
 
     print(f"len(all_patient_ids): {len(all_patient_ids)}")
     return all_patient_ids
+
+
+def get_df_frames(df_frames_dir, use_dask=False, debug=False):
+    paths = [path for path in os.listdir(df_frames_dir)]
+    paths_full = [os.path.join(df_frames_dir, path) for path in paths]
+    # Only load one frame for debug mode
+    if debug:
+        paths_full = paths_full[0]
+    df_frames = [get_df(path, use_dask) for path in paths_full]
+    df = pd.concat(df_frames, sort=False)
+    return df
+
+
+def omop_drug_exposure(drug_exposure_dir, use_dask=False, debug=False):
+    drug_exposure = get_df_frames(drug_exposure_dir, use_dask, debug)
+    return drug_exposure
+
+
+def omop_concept(concept_dir, use_dask=False):
+    concept = get_df_frames(concept_dir, use_dask)
+    return concept
 
 
 def main(args):
@@ -515,21 +548,28 @@ def main(args):
     # Get demographics dataframe
     demographics = get_df(args.demographics_path, args.use_dask)
 
-    # Get meddra extractions
-    meddra_extractions = get_df(args.meddra_extractions_path, args.use_dask)
+    ### NLP TABLES ###
+    # Get meddra extractions dataframe
+    meddra_extractions = \
+        get_df(args.meddra_extractions_path, args.use_dask)
 
-    # Get medications table
-    medications = get_df(args.medications_path, args.use_dask)
+    ### OMOP TABLES ###
+    # OMOP DRUG_EXPOSURE table
+    drug_exposure = \
+        omop_drug_exposure(args.drug_exposure_path, args.use_dask, args.debug)
+
+    # OMOP CONCEPT table
+    concept = omop_concept(args.concept_dir, args.use_dask)
 
     columns = sorted(meddra_extractions.columns.tolist())
     print(f"Dataframe column names:\n\t{columns}")
 
     patient_ids = get_all_patient_ids(demographics,
                                       meddra_extractions,
-                                      medications,
+                                      drug_exposure,
                                       args.use_dask)
 
-    get_events(patients, meddra_extractions, medications)
+    get_events(patients, concept, meddra_extractions, drug_exposure)
     if not patients.data['events']:
         print("Empty events dict! Exiting...")
         sys.exit(0)
@@ -580,8 +620,11 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    # Bools
+    parser.add_argument('--debug', action='store_true')
     parser.add_argument('--use_dask', action='store_true')
     parser.add_argument('--sample_column_values', action='store_true')
+    # Paths
     parser.add_argument('--demographics_path',
                         default='/share/pi/stamang/covid/data/demo/'
                                 'demo_all_pts.parquet')
@@ -589,10 +632,16 @@ if __name__ == '__main__':
                         default='/share/pi/stamang/covid/data/'
                                 'notes_20190901_20200701/labeled_extractions/'
                                 'all_POS_batch000_099.parquet')
+    # Directories
     parser.add_argument(
-        '--medications_path',
-        default='/share/pi/stamang/covid/data/drug_exposure/'
-                'drug_exposure000000000000.csv')
+        '--drug_exposure_dir',
+        default='/share/pi/stamang/covid/data/drug_exposure')
+
+    parser.add_argument(
+        '--concept_dir',
+        default='/share/pi/stamang/covid/data/concept'
+    )
+
     parser.add_argument('--output_dir',
                         default='/home/colbyham/output',
                         help='Path to output directory')  # , required=True)
