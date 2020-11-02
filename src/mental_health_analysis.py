@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from generate_patient_db import get_df
+from generate_patient_db import get_df, get_concept_name
 from patient_db import (PatientDB, convert_top_k_concept_ids_to_concept_names,
                         dump_dict, get_top_k, get_unique_match_ids,
                         get_unique_match_patient_visits, print_top_k)
@@ -104,10 +104,12 @@ def run_q9(patients, matches, event_type_roles, concepts, path):
 
     # Set up roles to count on by event type data structure
     cnt_event_type_roles['DRUG_EXPOSURE'] = set()
-    cnt_event_type_roles['DRUG_EXPOSURE'].add('drug_concept_id')
-    cnt_event_type_roles['DRUG_EXPOSURE'].add('drug_type_concept_id')
+    #cnt_event_type_roles['DRUG_EXPOSURE'].add('drug_concept_id')
+    #cnt_event_type_roles['DRUG_EXPOSURE'].add('drug_type_concept_id')
+    cnt_event_type_roles['DRUG_EXPOSURE'].add('drug_concept_name')
 
     entity_levels = ['patient', 'visit', 'event']
+    #entity_levels = ['patient']
     counters = patients.get_event_counters_from_matches(
         matches, event_type_roles, cnt_event_type_roles,
         entity_levels=entity_levels)
@@ -116,11 +118,12 @@ def run_q9(patients, matches, event_type_roles, concepts, path):
     # the number of visits or number of patients
     print("\nReporting top-k DRUG_EXPOSURE roles...")
     k, top_k = get_top_k(counters, entity_levels, cnt_event_type_roles, k=20)
-    top_k = convert_top_k_concept_ids_to_concept_names(
-        top_k, cnt_event_type_roles, concepts)
+    #top_k = convert_top_k_concept_ids_to_concept_names(
+    #    top_k, cnt_event_type_roles, concepts)
     print_top_k(top_k, cnt_event_type_roles,
                 description=f'Top {k} DRUG_EXPOSURE roles per')
     dump_dict(path, top_k)
+    import pdb;pdb.set_trace()
     return top_k, cnt_event_type_roles
 
 

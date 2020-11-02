@@ -755,6 +755,10 @@ class PatientDB():
                     event_roles = cnt_event_type_roles[event.event_type]
                     for event_role in event_roles:
                         item = event.roles[event_role]
+                        tokens = item.split(' ')
+                        item = tokens[0]
+                        
+
                         # Add item to all item sets
                         for entity_level in entity_levels:
                             items[entity_level][event.event_type][event_role].add(
@@ -949,7 +953,7 @@ class PatientDB():
 
         # Attach events to visits
         for i, event in enumerate(self.events):
-            if i % 10000 == 0:
+            if i % 100000 == 0:
                 now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 print(f"{now_str} Attaching event {i} out of {self.num_events()}")
             try:
