@@ -158,7 +158,7 @@ class EntityEncoder(JSONEncoder):
         }
 
 
-class Entity(object):
+class Entity():
     """Base entity class."""
 
     def __init__(self,
@@ -307,10 +307,15 @@ class Event(Entity):
         self.roles['condition_end_datetime'] = row.condition_end_datetime
         self.roles['condition_type_concept_id'] = row.condition_type_concept_id
 
-    def add_drug_exposure_roles(self, row):
+    def add_drug_exposure_roles(self, row, drug_concept_name,
+                                drug_source_concept_name,
+                                drug_type_concept_name, route_concept_name):
         self.roles['drug_exposure_id'] = row.drug_exposure_id
         self.roles['person_id'] = row.person_id
         self.roles['drug_concept_id'] = row.drug_concept_id
+        #drug_concept_name = get_concept_name(concept_df, row.drug_concept_id)
+        self.roles['drug_concept_name'] = drug_concept_name
+
         self.roles['drug_exposure_start_DATE'] = row.drug_exposure_start_DATE
         self.roles['drug_exposure_start_DATETIME'] = \
             row.drug_exposure_start_DATETIME
@@ -319,18 +324,29 @@ class Event(Entity):
             row.drug_exposure_end_DATETIME
         self.roles['verbatim_end_DATE'] = row.verbatim_end_DATE
         self.roles['drug_type_concept_id'] = row.drug_type_concept_id
+        #drug_type_concept_name = \
+        #    get_concept_name(concept_df, row.drug_type_concept_id)
+        self.roles['drug_type_concept_name'] = drug_type_concept_name
+
         self.roles['stop_reason'] = row.stop_reason
         self.roles['refills'] = row.refills
         self.roles['quantity'] = row.quantity
         self.roles['days_supply'] = row.days_supply
         self.roles['sig'] = row.sig
         self.roles['route_concept_id'] = row.route_concept_id
+        #route_concept_name = get_concept_name(concept_df, row.route_concept_id)
+        self.roles['route_concept_name'] = route_concept_name
+
         self.roles['lot_number'] = row.lot_number
         self.roles['provider_id'] = row.provider_id
         self.roles['visit_occurrence_id'] = row.visit_occurrence_id
         self.roles['visit_detail_id'] = row.visit_detail_id
         self.roles['drug_source_value'] = row.drug_source_value
         self.roles['drug_source_concept_id'] = row.drug_source_concept_id
+        #drug_source_concept_name = \
+        #    get_concept_name(concept_df, row.drug_source_concept_id)
+        self.roles['drug_source_concept_name'] = drug_source_concept_name
+
         self.roles['route_source_value'] = row.route_source_value
         self.roles['dose_unit_source_value'] = row.dose_unit_source_value
         self.roles['trace_id'] = row.trace_id
