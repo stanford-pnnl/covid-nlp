@@ -18,12 +18,12 @@ from dask.core import get
 from tqdm import tqdm
 
 from data_schema import EntityEncoder, Event, Patient, Visit
+from events import get_events
 from omop import omop_concept, omop_drug_exposure
 from patient_db import PatientDB
 from utils import (date_obj_to_str, date_str_to_obj, datetime_obj_to_str,
-                   datetime_str_to_obj, get_df, get_df_frames, get_table,
-                   get_patient_ids, get_person_ids)
-from events import get_events
+                   datetime_str_to_obj, get_df, get_df_frames, get_patient_ids,
+                   get_person_ids, get_table)
 
 
 def count_column_values(row, counter):

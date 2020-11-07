@@ -593,7 +593,7 @@ class PatientDB():
             # 'HLGT_CUI', 'HLT_CUI', 'PT_CUI', 'SOC_CUI', 'medID',
             # 'PExperiencer', 'HLGT', 'HLT', 'PT', 'SOC']
             event_roles.update(meddra_roles)
-
+        event_type_roles = []
         for event_type in event_types:
             if event_type == 'DiagnosisEvent':
                 event_type_roles = ['diagnosis_icd9',
@@ -616,9 +616,6 @@ class PatientDB():
                                     'targeted_organs']
             elif event_type == 'VitalEvent':
                 event_type_roles = ['location', 'vital_outcome']
-            else:
-                # Event type doesn't match
-                event_type_roles = []
 
             event_roles.update(event_type_roles)
         return event_roles

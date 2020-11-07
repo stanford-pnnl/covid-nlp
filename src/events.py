@@ -1,10 +1,12 @@
-from patient_db import PatientDB
-from data_schema import Event
-from datetime import datetime
-from typing import Dict
 from collections import Counter
+from datetime import datetime
+from typing import Dict, Set
+
+import dask.dataframe as dd
 import pandas as pd
-from typing import Set
+
+from data_schema import Event
+from patient_db import PatientDB
 
 
 def get_diagnosis_events_distress(patients: PatientDB, row, date_str,
@@ -299,7 +301,12 @@ def get_medication_events(patients: PatientDB, concept_df, df, use_dask=False):
 
     #new_df = df.join(concept_df.set_index('concept_id'),
     # n='drug_concept_id', how="left", ruffix="")
-    new_df = pd.merge(
+    if use_dask:
+        df_lib = pd
+    else:
+        df_lib = dd
+
+    new_df = df_lib.merge(
         df, concept_df, how="left", left_on="drug_concept_id",
         right_on="concept_id", suffixes=('', '_right'))
 
