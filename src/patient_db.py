@@ -597,19 +597,28 @@ class PatientDB():
         for event_type in event_types:
             if event_type == 'DiagnosisEvent':
                 event_type_roles = ['diagnosis_icd9',
-                                    'diagnosis_name', 'diagnosis_long_name']
+                                    'diagnosis_name',
+                                    'diagnosis_long_name']
             elif event_type == 'LabEvent':
-                event_type_roles = ['test_name', 'test_status', 'test_value']
+                event_type_roles = ['test_name',
+                                    'test_status',
+                                    'test_value']
             elif event_type == 'MedicationEvent':
-                event_type_roles = ['dosage', 'duration',
-                                    'indication', 'medication']
+                event_type_roles = ['dosage',
+                                    'duration',
+                                    'indication',
+                                    'medication']
             elif event_type == 'PatientEvent':
                 pass  # TODO event_type_roles= ['attribute', 'attribute_value']
             elif event_type == 'ProcedureEvent':
                 event_type_roles = ['procedure_icd9',
-                                    'procedure_name', 'targeted_organs']
+                                    'procedure_name',
+                                    'targeted_organs']
             elif event_type == 'VitalEvent':
                 event_type_roles = ['location', 'vital_outcome']
+            else:
+                # Event type doesn't match
+                event_type_roles = []
 
             event_roles.update(event_type_roles)
         return event_roles
@@ -757,7 +766,6 @@ class PatientDB():
                         item = event.roles[event_role]
                         tokens = item.split(' ')
                         item = tokens[0]
-                        
 
                         # Add item to all item sets
                         for entity_level in entity_levels:
@@ -955,7 +963,8 @@ class PatientDB():
         for i, event in enumerate(self.events):
             if i % 100000 == 0:
                 now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                print(f"{now_str} Attaching event {i} out of {self.num_events()}")
+                print(f"{now_str} Attaching event {i} out of "
+                      f"{self.num_events()}")
             try:
                 # FIXME, we dont have unique_visit_ids
                 patient = self.get_patient_by_id(event.patient_id)
