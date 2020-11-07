@@ -332,7 +332,8 @@ class Event(Entity):
         self.roles['days_supply'] = row.days_supply
         self.roles['sig'] = row.sig
         self.roles['route_concept_id'] = row.route_concept_id
-        #route_concept_name = get_concept_name(concept_df, row.route_concept_id)
+        #route_concept_name = \
+        # get_concept_name(concept_df, row.route_concept_id)
         #self.roles['route_concept_name'] = route_concept_name
 
         self.roles['lot_number'] = row.lot_number
@@ -484,6 +485,7 @@ class Patient(Entity):
         visit_ids = list(visit_ids)
         return visit_ids
 
+    #FIXME broken
     def __eq__(self, other):
         """Test if Patient objects are equal."""
         if not isinstance(other, Patient):
