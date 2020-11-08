@@ -1,10 +1,12 @@
 # covid-nlp
 
 
-Files:
+Files/Modules:
 
 	* data_schema.py
 		- Patient, Visit, Event classes and JSON encoder/decoder
+	* events.py
+		- Event checking functions
 	* generate_patient_db.py
 		- Read in meddra extractions from batch files and build patient knowlege graph
 		- Example usage: python src/generate_patient_db.py --output_dir /home/colbyham/covid-nlp/output --use_dask
@@ -13,8 +15,12 @@ Files:
 		- Example usage: python src/run_mental_health_analysis.py --patient_db_path /home/colbyham/covid-nlp/output/patients_20200831-050502.jsonl
     * mental_health_analysis.py
         - Implementation of mental health queries
+    * omop.py
+		- Functions related to OMOP format tables
 	* patient_db.py
 		- PatientDB class
+	* utils.py
+		- Common functions that are shared between many modules.
 	* ExampleNotebook.ipynb
 		- Jupyter notebook version of run_mental_health_analysis.py
 
