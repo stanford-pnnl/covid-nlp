@@ -21,6 +21,7 @@ from data_schema import EntityEncoder, Event, Patient, Visit
 from events import get_events
 from omop import omop_concept, omop_drug_exposure
 from patient_db import PatientDB
+from run_mental_health_analysis import get_command_line_args
 from utils import (date_obj_to_str, date_str_to_obj, datetime_obj_to_str,
                    datetime_str_to_obj, get_df, get_df_frames, get_patient_ids,
                    get_person_ids, get_table)
@@ -116,7 +117,8 @@ def get_all_patient_visit_dates(patients: PatientDB, df):
     return patient_visit_dates
 
 
-def get_all_patient_ids(demographics, extractions, drug_exposure, use_dask):
+def get_all_patient_ids(demographics, extractions, drug_exposure,
+                        use_dask=False):
     all_patient_ids = set()
 
     demo_person_ids = get_person_ids(demographics, use_dask)
@@ -130,7 +132,9 @@ def get_all_patient_ids(demographics, extractions, drug_exposure, use_dask):
     print(f"extractions: len(patient_ids): {len(patient_ids)}")
     all_patient_ids.update(patient_ids)
 
-    drug_exposure_person_ids = get_person_ids(drug_exposure)
+    drug_exposure_person_ids = get_person_ids(drug_exposure, use_dask)
+    #import pdb;pdb.set_trace()
+    # DEBUG FIXME, dask doesn't like turning this to a set
     drug_exposure_person_ids = set(drug_exposure_person_ids)
     print(f"medications: len(med_person_ids): {len(drug_exposure_person_ids)}")
     all_patient_ids.update(drug_exposure_person_ids)
@@ -139,7 +143,7 @@ def get_all_patient_ids(demographics, extractions, drug_exposure, use_dask):
     return all_patient_ids
 
 
-def main(args):
+def generate_patient_db(args):
     # Setup variables
     print(f"\nargs: {args}\n")
 
@@ -147,24 +151,30 @@ def main(args):
     patients = PatientDB(name='all')
 
     # Get demographics dataframe
-    demographics = get_df(args.demographics_path, args.use_dask)
+    demographics = get_df(args.demographics_path,
+                          use_dask=args.use_dask,
+                          debug=args.debug)
 
     ### NLP TABLES ###
     # Get meddra extractions dataframe
+    meddra_extractions_pattern = '*_*'
     meddra_extractions = get_table(args.meddra_extractions_dir,
                                    prefix='all_POS_batch',
-                                   pattern='*_*',
+                                   pattern=meddra_extractions_pattern,
                                    extension='.parquet',
-                                   use_dask=args.use_dask)
+                                   use_dask=args.use_dask,
+                                   debug=args.debug)
 
     ### OMOP TABLES ###
     # OMOP DRUG_EXPOSURE table
     drug_exposure = omop_drug_exposure(args.drug_exposure_dir,
-                                       args.use_dask,
-                                       args.debug)
+                                       use_dask=args.use_dask,
+                                       debug=args.debug)
 
     # OMOP CONCEPT table
-    concept = omop_concept(args.concept_dir, args.use_dask, args.debug)
+    concept = omop_concept(args.concept_dir,
+                           use_dask=args.use_dask,
+                           debug=args.debug)
 
     columns = sorted(meddra_extractions.columns.tolist())
     print(f"Dataframe column names:\n\t{columns}")
@@ -172,7 +182,7 @@ def main(args):
     patient_ids = get_all_patient_ids(demographics,
                                       meddra_extractions,
                                       drug_exposure,
-                                      args.use_dask)
+                                      use_dask=args.use_dask)
 
     get_events(patients, concept, meddra_extractions, drug_exposure,
                use_dask=False)
@@ -222,36 +232,3 @@ def main(args):
     #import pdb
     #pdb.set_trace()
     print()
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-
-    # Bools
-    parser.add_argument('--debug', action='store_true')
-    parser.add_argument('--use_dask', action='store_true')
-    parser.add_argument('--sample_column_values', action='store_true')
-
-    # Paths
-    parser.add_argument('--demographics_path',
-                        default='/share/pi/stamang/covid/data/demo/'
-                                'demo_all_pts.parquet')
-
-    # Directories
-    parser.add_argument(
-        '--meddra_extractions_dir',
-        default='/share/pi/stamang/covid/data/notes_20190901_20200701/'
-                'labeled_extractions')
-    parser.add_argument(
-        '--drug_exposure_dir',
-        default='/share/pi/stamang/covid/data/drug_exposure')
-    parser.add_argument(
-        '--concept_dir',
-        default='/share/pi/stamang/covid/data/concept')
-    parser.add_argument(
-        '--output_dir',
-        default='/home/colbyham/output',
-        help='Path to output directory')  # , required=True)
-
-    args: argparse.Namespace = parser.parse_args()
-    main(args)
