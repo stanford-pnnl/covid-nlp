@@ -7,7 +7,9 @@ Files/Modules:
 		- Patient, Visit, Event classes and JSON encoder/decoder
 	* events.py
 		- Event checking functions
-	* generate_patient_db.py
+	* generate.py
+		- PatientDB generation functions
+	* run_generate.py
 		- Read in meddra extractions from batch files and build patient knowlege graph
 		- Example usage: python src/generate_patient_db.py --output_dir /home/colbyham/covid-nlp/output --use_dask
 	* run_mental_health_analysis.py
