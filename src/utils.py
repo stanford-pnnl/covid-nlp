@@ -6,22 +6,24 @@ import dask.dataframe as dd
 import pandas as pd
 
 
-def get_df(path, use_dask=False):
+def get_df(path, use_dask=False, debug=False):
     if use_dask:
-        df = dd.read_parquet(path, engine='pyarrow')
+        df_lib = dd
     else:
-        if '.parquet' in path:
-            df = pd.read_parquet(path, engine='pyarrow')
-        elif '.hdf' in path:
-            df = pd.read_hdf(path)
-        elif '.csv' in path:
-            # FIXME, files that are gzipped need to have the correct extension
-            # .gz
-            df = pd.read_csv(path,
-                             compression='gzip')
-        else:
-            print(f"Unhandled path, no matching file extension: {path}")
-            sys.exit(1)
+        df_lib = pd
+
+    if '.parquet' in path:
+        df = df_lib.read_parquet(path, engine='pyarrow')
+    elif '.hdf' in path:
+        df = df_lib.read_hdf(path)
+    elif '.csv' in path:
+        # FIXME, files that are gzipped need to have the correct extension
+        # .gz
+        df = df_lib.read_csv(path, compression='gzip')
+    else:
+        print(f"Unhandled path, no matching file extension: {path}")
+        sys.exit(1)
+
     print(f"Successfully read dataframe from path: {path}")
     return df
 
@@ -43,10 +45,14 @@ def get_df_frames(df_frames_dir, use_dask=False, debug=False):
 
 def get_table(table_dir, prefix='', pattern='*', extension='.csv',
               use_dask=False, debug=False):
+    print("get_table()")
     if use_dask:
+        print("\tUsing dask")
         table_path = f"{table_dir}/{prefix}{pattern}{extension}"
+        print(f"\ttable_path: {table_path}")
         df = get_df(table_path, use_dask, debug)
     else:
+        print("\tGetting df frames")
         df = get_df_frames(table_dir, use_dask, debug)
     return df
 
