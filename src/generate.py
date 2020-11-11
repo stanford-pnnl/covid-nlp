@@ -21,7 +21,6 @@ from data_schema import EntityEncoder, Event, Patient, Visit
 from events import get_events
 from omop import omop_concept, omop_drug_exposure
 from patient_db import PatientDB
-from run_mental_health_analysis import get_command_line_args
 from utils import (date_obj_to_str, date_str_to_obj, datetime_obj_to_str,
                    datetime_str_to_obj, get_df, get_df_frames, get_patient_ids,
                    get_person_ids, get_table)
@@ -143,38 +142,40 @@ def get_all_patient_ids(demographics, extractions, drug_exposure,
     return all_patient_ids
 
 
-def generate_patient_db(args):
-    # Setup variables
-    print(f"\nargs: {args}\n")
+def generate_patient_db(demographics_path, meddra_extractions_dir,
+                        drug_exposure_dir, concept_dir, output_dir, debug,
+                        use_dask):
 
     # Create patient DB to store data
     patients = PatientDB(name='all')
 
     # Get demographics dataframe
-    demographics = get_df(args.demographics_path,
-                          use_dask=args.use_dask,
-                          debug=args.debug)
+    demographics = get_df(demographics_path,
+                          use_dask=use_dask,
+                          debug=debug)
 
     ### NLP TABLES ###
     # Get meddra extractions dataframe
     meddra_extractions_pattern = '*_*'
-    meddra_extractions = get_table(args.meddra_extractions_dir,
+    meddra_extractions = get_table(meddra_extractions_dir,
                                    prefix='all_POS_batch',
                                    pattern=meddra_extractions_pattern,
                                    extension='.parquet',
-                                   use_dask=args.use_dask,
-                                   debug=args.debug)
+                                   use_dask=use_dask,
+                                   debug=debug)
 
     ### OMOP TABLES ###
     # OMOP DRUG_EXPOSURE table
-    drug_exposure = omop_drug_exposure(args.drug_exposure_dir,
-                                       use_dask=args.use_dask,
-                                       debug=args.debug)
+    drug_exposure = omop_drug_exposure(drug_exposure_dir,
+                                       use_dask=use_dask,
+                                       debug=debug)
 
     # OMOP CONCEPT table
-    concept = omop_concept(args.concept_dir,
-                           use_dask=args.use_dask,
-                           debug=args.debug)
+    concept = omop_concept(concept_dir,
+                           use_dask=use_dask,
+                           debug=debug)
+    
+    import pdb;pdb.set_trace()
 
     columns = sorted(meddra_extractions.columns.tolist())
     print(f"Dataframe column names:\n\t{columns}")
@@ -182,7 +183,7 @@ def generate_patient_db(args):
     patient_ids = get_all_patient_ids(demographics,
                                       meddra_extractions,
                                       drug_exposure,
-                                      use_dask=args.use_dask)
+                                      use_dask=use_dask)
 
     get_events(patients, concept, meddra_extractions, drug_exposure,
                use_dask=False)
@@ -222,12 +223,12 @@ def generate_patient_db(args):
     #pdb.set_trace()
 
     print('Attach demographic information to patients')
-    patients.add_demographic_info(demographics, args.use_dask)
+    patients.add_demographic_info(demographics, use_dask)
     #import pdb
     #pdb.set_trace()
 
     print('Dump patients to a file')
-    patients.dump(args.output_dir, "patients", "jsonl", unique=True)
+    patients.dump(output_dir, "patients", "jsonl", unique=True)
 
     #import pdb
     #pdb.set_trace()
