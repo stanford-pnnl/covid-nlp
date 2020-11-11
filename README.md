@@ -61,8 +61,6 @@ Environment:
 
 TODO:
 
-	1. Read in patient demographic information
-	2. Add aggregation by patient demographics attributes
-	3. Allow for other levels of meddra matching
-	4. Implement meddra queries
+	1. Allow for other levels of meddra matching
+	2. Implement meddra queries
 		* e.g. Match(SOC="*", HLGT="cardiac_valve_disorders", HLT="*", PT="*")
