@@ -1,4 +1,6 @@
 import argparse
+from generate import generate_patient_db
+
 
 def get_command_line_args():
     parser = argparse.ArgumentParser()
@@ -35,6 +37,13 @@ def get_command_line_args():
 
     args: argparse.Namespace = parser.parse_args()
     return args
+
+
+def main(args):
+    print(f"\nargs: {args}\n")
+    generate_patient_db(args.demographics_path, args.meddra_extractions_dir,
+                        args.drug_exposure_dir, args.concept_dir,
+                        args.output_dir, args.debug, args.use_dask)
 
 
 if __name__ == '__main__':
