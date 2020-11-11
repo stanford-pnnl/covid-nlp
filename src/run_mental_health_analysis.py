@@ -2,9 +2,21 @@ import argparse
 
 import pandas as pd
 
-from generate_patient_db import get_df
+from utils import get_df
 from mental_health_analysis import prepare_output_dirs, run_q1, run_q9
 from patient_db import PatientDB
+
+
+def get_command_line_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--patient_db_path',
+                        help='Path to load patient_db dump from',
+                        required=True)
+    parser.add_argument('--output_dir',
+                        help='Output dir to dump results',
+                        required=True)
+    args: argparse.Namespace = parser.parse_args()
+    return args
 
 
 def main(args):
@@ -76,12 +88,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--patient_db_path',
-                        help='Path to load patient_db dump from',
-                        required=True)
-    parser.add_argument('--output_dir',
-                        help='Output dir to dump results',
-                        required=True)
-    args: argparse.Namespace = parser.parse_args()
-    main(args)
+    main(get_command_line_args())
