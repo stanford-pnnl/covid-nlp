@@ -26,6 +26,16 @@ Files/Modules:
 	* ExampleNotebook.ipynb
 		- Jupyter notebook version of run_mental_health_analysis.py
 
+Data sources:
+
+	* NLP extractions
+    	* meddra_extractions
+	* Structured EHR
+    	* OMOP Common Data Model
+        	* DRUG_EXPOSURE
+        	* CONCEPT
+      	* demographics
+
 Features:
 
 	* generate_patient_db.py
