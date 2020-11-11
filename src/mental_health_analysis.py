@@ -5,8 +5,8 @@ from datetime import date
 from pathlib import Path
 
 import pandas as pd
-
-from generate_patient_db import get_concept_name, get_df
+from generate import get_concept_name
+from utils import get_df
 from patient_db import (PatientDB, convert_top_k_concept_ids_to_concept_names,
                         dump_dict, get_top_k, get_unique_match_ids,
                         get_unique_match_patient_visits, print_top_k)
@@ -171,7 +171,7 @@ def mental_health_age_distribution(patients, search_terms, output_dir):
     monthly_splits = patients.agg_time('M')
     for key, month_split in monthly_splits.items():
         month_split_dist_path = \
-            f"{args.output_dir}/{key}_dist.png"
+            f"{output_dir}/{key}_dist.png"
         print(month_split_dist_path)
         min_age, max_age = month_split.calculate_patient_ages(compare_date)
         month_split.calculate_age_gender_distribution(
