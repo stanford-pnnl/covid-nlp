@@ -4,3 +4,4 @@ __pycache__/
 *.log
 .ipynb_checkpoints/
 .vscode/
+node_modules/
