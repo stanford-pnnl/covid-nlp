@@ -5,3 +5,5 @@ __pycache__/
 .ipynb_checkpoints/
 .vscode/
 node_modules/
+input/
+output/
