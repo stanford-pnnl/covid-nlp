@@ -164,21 +164,24 @@ def generate_patient_db(demographics_path, meddra_extractions_dir,
                                    use_dask=use_dask,
                                    debug=debug)
 
+    meddra_extractions_columns = sorted(meddra_extractions.columns.tolist())
+    print(f"meddra extractions column names:\n\t{meddra_extractions_columns}")
+
     ### OMOP TABLES ###
     # OMOP DRUG_EXPOSURE table
     drug_exposure = omop_drug_exposure(drug_exposure_dir,
                                        use_dask=use_dask,
                                        debug=debug)
+    drug_exposure_columns = sorted(drug_exposure.columns.tolist())
+    print(f"drug exposure column names:\n\t{drug_exposure_columns}")
 
     # OMOP CONCEPT table
     concept = omop_concept(concept_dir,
                            use_dask=use_dask,
                            debug=debug)
-    
+    concept_columns = sorted(concept.columns.tolist())
+    print(f"concept column names:\n\t{concept_columns}")
     import pdb;pdb.set_trace()
-
-    columns = sorted(meddra_extractions.columns.tolist())
-    print(f"Dataframe column names:\n\t{columns}")
 
     patient_ids = get_all_patient_ids(demographics,
                                       meddra_extractions,
