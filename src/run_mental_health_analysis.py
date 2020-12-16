@@ -1,20 +1,32 @@
 import argparse
 
 import pandas as pd
+from omop import omop_concept
 
-from utils import get_df
+from utils import get_df, get_table
 from mental_health_analysis import prepare_output_dirs, run_q1, run_q9
 from patient_db import PatientDB
 
 
 def get_command_line_args():
     parser = argparse.ArgumentParser()
+
+    # Bools
+    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--use_dask', action='store_true')
+
+    # Paths
     parser.add_argument('--patient_db_path',
                         help='Path to load patient_db dump from',
                         required=True)
+
+    # Dirs
+    parser.add_argument('--concept_dir',
+                        default='/share/pi/stamang/covid/data/concept',
+                        help='Input dir to read in OMOP CONCEPT table')
     parser.add_argument('--output_dir',
-                        help='Output dir to dump results',
-                        required=True)
+                        default='/home/colbyham/output/mental_health_queries',
+                        help='Output dir to dump results')
     args: argparse.Namespace = parser.parse_args()
     return args
 
@@ -22,11 +34,16 @@ def get_command_line_args():
 def main(args):
     print("START OF PROGRAM\n")
     # FIXME
-    concepts_paths = [
-        f'/share/pi/stamang/covid/data/concept/concept00000000000{i}.csv' for i in range(3)]
-    print("Loading concepts table")
-    frames = [get_df(path) for path in concepts_paths]
-    concepts = pd.concat(frames, sort=False)
+
+    concept_pattern = "*"
+    concept_pattern_re = ".*"
+    concept = omop_concept(args.concept_dir,
+                           prefix='concept',
+                           pattern=concept_pattern,
+                           pattern_re=concept_pattern_re,
+                           extension='.csv',
+                           use_dask=args.use_dask,
+                           debug=args.debug)
     # import pdb;pdb.set_trace()
 
     # Create and load an instance of PatientDB
@@ -82,7 +99,7 @@ def main(args):
     # Q9 - What are the top medications prescribed for patients with mental health related issues?
     question_nine_top_k, question_nine_cnt_event_type_roles = \
         run_q9(patients, question_one_matches, question_one_event_type_roles,
-               concepts, f"{args.output_dir}/q9/top_k.jsonl")
+               concept, f"{args.output_dir}/q9/top_k.jsonl")
 
     print("END OF PROGRAM")
 
