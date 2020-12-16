@@ -19,8 +19,12 @@ def main(input_path, output_path):
     c = Counter()
     non_empty_section_headers = Counter()
     counter_num_visits = Counter()
+    line_num = -1
     with open(input_path, 'r') as fin:
         for line in fin:
+            line_num += 1
+            if line_num % 10000 == 0:
+                print(f"Processing line no: {line_num}", flush=True)
             patient = json.loads(line)
             patient_id = patient['patient_id']
             c['total_patients'] += 1
@@ -68,8 +72,14 @@ def main(input_path, output_path):
 
 
 if __name__ == '__main__':
-    repo_dir = '/Users/hamc649/Documents/deepcare/covid-19/covid-nlp'
-    base_path = 'covid_like_patients_entity_batch000'
+    use_local = False
+    if use_local:
+        repo_dir = '/Users/hamc649/Documents/deepcare/covid-19/covid-nlp'
+        base_path = 'covid_like_patients_entity_batch000'
+    else:
+        repo_dir = '/home/colbyham/covid-nlp'
+        base_path = 'covid_like_patients_entity'
+
     input_path = f'{repo_dir}/input/{base_path}.jsonl'
     output_path = f'{repo_dir}/output/{base_path}-first_visit.jsonl'
     main(input_path, output_path)

@@ -43,9 +43,12 @@ def chunk_big_json(input_path, output_path, num_patients_per_file):
     except OSError:
         print(f"Can't delete {output_path} as it does not exist")
 
-
+    line_num = -1
     with open(input_path) as fin:
         for line in fin:
+            line_num += 1
+            if line_num % 1000000 == 0:
+                print(f"Processing line no: {line_num}", flush=True)  
             # Skip the first line of the entire patients dump
             if first_loop:
                 first_loop = False
@@ -69,8 +72,13 @@ def chunk_big_json(input_path, output_path, num_patients_per_file):
 
 
 if __name__ == '__main__':
-    repo_dir = '/Users/hamc649/Documents/deepcare/covid-19/covid-nlp'
-    base_path = 'covid_like_patients_entity_batch000'
-    input_path = f'input/{base_path}.json'
-    output_path = f'input/{base_path}.jsonl'
+    use_local = False
+    if use_local:
+        repo_dir = '/Users/hamc649/Documents/deepcare/covid-19/covid-nlp'
+        base_path = 'covid_like_patients_entity_batch000'
+    else:
+        repo_dir = '/home/colbyham/covid-nlp'
+        base_path = 'covid_like_patients_entity'
+    input_path = f'{repo_dir}/input/{base_path}.json'
+    output_path = f'{repo_dir}/input/{base_path}.jsonl'
     chunk_big_json(input_path, output_path, 1)
