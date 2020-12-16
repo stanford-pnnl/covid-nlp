@@ -72,5 +72,5 @@ if __name__ == '__main__':
     repo_dir = '/Users/hamc649/Documents/deepcare/covid-19/covid-nlp'
     base_path = 'covid_like_patients_entity_batch000'
     input_path = f'input/{base_path}.json'
-    output_path = f'output/{base_path}.jsonl'
+    output_path = f'input/{base_path}.jsonl'
     chunk_big_json(input_path, output_path, 1)
