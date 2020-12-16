@@ -32,7 +32,7 @@ def get_command_line_args():
         default='/share/pi/stamang/covid/data/concept')
     parser.add_argument(
         '--output_dir',
-        default='/home/colbyham/output',
+        default='/home/colbyham/output/patient_db',
         help='Path to output directory')  # , required=True)
 
     args: argparse.Namespace = parser.parse_args()
