@@ -11,7 +11,7 @@ def dump_patient(patient, path):
         fout.write(f"{patient_str}\n")
 
 
-def main(input_path, output_path):
+def main(input_path, output_path, use_first_section, use_first_visit):
     # Remove output file
     try:
         os.remove(output_path)
@@ -121,4 +121,4 @@ if __name__ == '__main__':
             f'{partition_i}.{extension}'
         print(f"\tinput_path: {input_path}", flush=True)
         print(f"\toutput_path: {output_path}", flush=True)
-        main(input_path, output_path)
+        main(input_path, output_path, use_first_section, use_first_visit)
