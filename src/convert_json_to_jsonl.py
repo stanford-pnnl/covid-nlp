@@ -37,8 +37,9 @@ def dump_patient(patient, path, c):
         print(f"Batch: {c['batch_id']}")
 
 
-def chunk_big_json(input_path, output_dir, base_path, extension,
+def chunk_big_json(input_dir, output_dir, base_path, extension,
                    num_patients_per_batch):
+    input_path = f'{input_dir}/{base_path}.json'
     output_base_path = f'{output_dir}/{base_path}'
 
     # Pattern to match patient ID
@@ -100,8 +101,6 @@ def chunk_big_json(input_path, output_dir, base_path, extension,
 
     print(f"{c}")
 
-        #print()
-
 
 if __name__ == '__main__':
     use_local = False
@@ -111,13 +110,14 @@ if __name__ == '__main__':
     else:
         repo_dir = '/home/colbyham/covid-nlp'
         base_path = 'covid_like_patients_entity'
-
-    input_path = f'{repo_dir}/input/{base_path}.json'
-    colby_data_dir = '/share/pi/stamang/covid/data/colby'
-    output_dir = f"{colby_data_dir}/convert_json_to_jsonl"
+    #FIXME, update path to reflext current file directory
 
     extension = 'jsonl'
-    num_patients_per_file = 1000
+    n_patients_per_partition = 1000
+    script_name = 'convert_json_to_jsonl'
+    script_dir = f'{repo_dir}/{script_name}'
+    input_dir = f'{script_dir}/input'
+    output_dir = f'{script_dir}/output'
 
-    chunk_big_json(input_path, output_dir, base_path, extension,
-                   num_patients_per_file)
+    chunk_big_json(input_dir, output_dir, base_path, extension,
+                   n_patients_per_partition)
