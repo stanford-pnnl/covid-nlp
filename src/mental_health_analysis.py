@@ -15,9 +15,9 @@ from patient_db import (PatientDB, convert_top_k_concept_ids_to_concept_names,
 def prepare_output_dirs(output_dir, num_questions=0, prefix=''):
     print('Preparing output directories...')
     for num_q in range(1, num_questions + 1):
-        output_dir = f"{output_dir}/{prefix}{num_q}"
-        print(f'\tAttempting to create: {output_dir}')
-        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        num_q_output_dir = f"{output_dir}/{prefix}{num_q}"
+        print(f'\tAttempting to create: {num_q_output_dir }')
+        Path(num_q_output_dir).mkdir(parents=True, exist_ok=True)
 
 
 def run_q1(patients, search_terms, path):
