@@ -37,9 +37,9 @@ def dump_patient(patient, path, c):
         print(f"Batch: {c['batch_id']}")
 
 
-def chunk_big_json(input_dir, output_dir, base_path, extension,
-                   num_patients_per_batch):
-    input_path = f'{input_dir}/{base_path}.json'
+def chunk_big_json(input_dir, output_dir, base_path, input_extension,
+                   output_extension, num_patients_per_batch):
+    input_path = f'{input_dir}/{base_path}.{input_extension}'
     output_base_path = f'{output_dir}/{base_path}'
 
     # Pattern to match patient ID
@@ -85,7 +85,7 @@ def chunk_big_json(input_dir, output_dir, base_path, extension,
                     patient = \
                         format_patient(patient_lines, first_line, last_line)
                     output_batch_path = \
-                        f"{output_base_path}.{c['batch_id']}.{extension}"
+                        f"{output_base_path}.{c['batch_id']}.{output_extension}"
                     dump_patient(patient, output_batch_path, c)
 
                     patient_lines.clear()
@@ -96,28 +96,37 @@ def chunk_big_json(input_dir, output_dir, base_path, extension,
             patient_lines.pop()
             patient = format_patient(patient_lines, first_line, last_line)
             output_batch_path = \
-                f"{output_base_path}.{c['batch_id']}.{extension}"
+                f"{output_base_path}.{c['batch_id']}.{output_extension}"
             dump_patient(patient, output_batch_path, c)
 
     print(f"{c}")
 
 
 if __name__ == '__main__':
-    use_local = False
+    use_local = True
     if use_local:
         repo_dir = '/Users/hamc649/Documents/deepcare/covid-19/covid-nlp'
-        base_path = 'covid_like_patients_entity_batch000'
+        #base_path = 'covid_like_patients_entity_batch000'
+        # siyi's latest format
+        base_path = 'entity_risk_by_patients_processed_covid_admission_notes'
     else:
         repo_dir = '/home/colbyham/covid-nlp'
         base_path = 'covid_like_patients_entity'
     #FIXME, update path to reflext current file directory
 
-    extension = 'jsonl'
+    input_extension = 'json'
+    output_extension = 'jsonl'
     n_patients_per_partition = 1000
     script_name = 'convert_json_to_jsonl'
     script_dir = f'{repo_dir}/{script_name}'
     input_dir = f'{script_dir}/input'
     output_dir = f'{script_dir}/output'
 
-    chunk_big_json(input_dir, output_dir, base_path, extension,
-                   n_patients_per_partition)
+    chunk_big_json(
+        input_dir,
+        output_dir,
+        base_path,
+        input_extension,
+        output_extension,
+        n_patients_per_partition
+    )
