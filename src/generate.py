@@ -21,9 +21,8 @@ from data_schema import EntityEncoder, Event, Patient, Visit
 from events import get_events
 from omop import omop_concept, omop_drug_exposure
 from patient_db import PatientDB
-from utils import (date_obj_to_str, date_str_to_obj, datetime_obj_to_str,
-                   datetime_str_to_obj, get_df, get_df_frames, get_patient_ids,
-                   get_person_ids, get_table)
+from utils import (date_obj_to_str, get_df, get_patient_ids, get_person_ids,
+                   get_table)
 
 
 def count_column_values(row, counter):
@@ -72,14 +71,14 @@ def get_concept_class_id(df, concept_id):
 
 def print_concept(df, concept_id):
     concept = get_concept(df, concept_id)
-    print(concept)
+    print(f"{concept}", flush=True)
     return concept
 
 
 def create_patient_visit_dates(patient_ids, date_strs):
-    print('Creating patient visit dates')
-    print(f"len(patient_ids): {len(patient_ids)}")
-    print(f"len(date_str): {len(date_strs)}")
+    print('Creating patient visit dates', flush=True)
+    print(f"len(patient_ids): {len(patient_ids)}", flush=True)
+    print(f"len(date_str): {len(date_strs)}", flush=True)
     #import pdb
     #pdb.set_trace()
     # FIXME
@@ -112,7 +111,8 @@ def get_patient_visit_dates(patients: PatientDB, df):
 
 def get_all_patient_visit_dates(patients: PatientDB, df):
     patient_visit_dates = get_patient_visit_dates(patients, df)
-    print(f'Found {len(patient_visit_dates)} patient,visit,date tuples')
+    print(f'Found {len(patient_visit_dates)} patient,visit,date tuples',
+          flush=True)
     return patient_visit_dates
 
 
@@ -122,23 +122,25 @@ def get_all_patient_ids(demographics, extractions, drug_exposure,
 
     demo_person_ids = get_person_ids(demographics, use_dask)
     demo_person_ids = set(demo_person_ids)
-    print(f"demographics: len(demo_person_ids): {len(demo_person_ids)}")
+    print(f"demographics: len(demo_person_ids): {len(demo_person_ids)}",
+          flush=True)
     all_patient_ids.update(demo_person_ids)
 
     # Get distinct Patient ID values from dataframe
     patient_ids = get_patient_ids(extractions, use_dask)
     patient_ids = set(patient_ids)
-    print(f"extractions: len(patient_ids): {len(patient_ids)}")
+    print(f"extractions: len(patient_ids): {len(patient_ids)}", flush=True)
     all_patient_ids.update(patient_ids)
 
     drug_exposure_person_ids = get_person_ids(drug_exposure, use_dask)
     #import pdb;pdb.set_trace()
     # DEBUG FIXME, dask doesn't like turning this to a set
     drug_exposure_person_ids = set(drug_exposure_person_ids)
-    print(f"medications: len(med_person_ids): {len(drug_exposure_person_ids)}")
+    print(f"medications: len(med_person_ids): {len(drug_exposure_person_ids)}",
+          flush=True)
     all_patient_ids.update(drug_exposure_person_ids)
 
-    print(f"len(all_patient_ids): {len(all_patient_ids)}")
+    print(f"len(all_patient_ids): {len(all_patient_ids)}", flush=True)
     return all_patient_ids
 
 
@@ -157,31 +159,41 @@ def generate_patient_db(demographics_path, meddra_extractions_dir,
     ### NLP TABLES ###
     # Get meddra extractions dataframe
     meddra_extractions_pattern = '*_*'
+    meddra_extractions_pattern_re = '.*_.*'
     meddra_extractions = get_table(meddra_extractions_dir,
                                    prefix='all_POS_batch',
                                    pattern=meddra_extractions_pattern,
+                                   pattern_re=meddra_extractions_pattern_re,
                                    extension='.parquet',
                                    use_dask=use_dask,
                                    debug=debug)
 
     meddra_extractions_columns = sorted(meddra_extractions.columns.tolist())
-    print(f"meddra extractions column names:\n\t{meddra_extractions_columns}")
+    print(f"meddra extractions column names:\n\t{meddra_extractions_columns}",
+          flush=True)
 
     ### OMOP TABLES ###
     # OMOP DRUG_EXPOSURE table
+    drug_exposure_pattern = "0000000000*"
+    drug_exposure_pattern_re = "0000000000.*"
     drug_exposure = omop_drug_exposure(drug_exposure_dir,
+                                       prefix='drug_exposure',
+                                       pattern=drug_exposure_pattern,
+                                       pattern_re=drug_exposure_pattern_re,
+                                       extension='.csv',
                                        use_dask=use_dask,
                                        debug=debug)
     drug_exposure_columns = sorted(drug_exposure.columns.tolist())
-    print(f"drug exposure column names:\n\t{drug_exposure_columns}")
+    print(f"drug exposure column names:\n\t{drug_exposure_columns}",
+          flush=True)
 
     # OMOP CONCEPT table
     concept = omop_concept(concept_dir,
                            use_dask=use_dask,
                            debug=debug)
     concept_columns = sorted(concept.columns.tolist())
-    print(f"concept column names:\n\t{concept_columns}")
-    import pdb;pdb.set_trace()
+    print(f"concept column names:\n\t{concept_columns}", flush=True)
+    #import pdb;pdb.set_trace()
 
     patient_ids = get_all_patient_ids(demographics,
                                       meddra_extractions,
@@ -191,14 +203,14 @@ def generate_patient_db(demographics_path, meddra_extractions_dir,
     get_events(patients, concept, meddra_extractions, drug_exposure,
                use_dask=False)
     if not patients.data['events']:
-        print("Empty events dict! Exiting...")
+        print("Empty events dict! Exiting...", flush=True)
         sys.exit(0)
-    print(f"Found {patients.num_events()} events")
+    print(f"Found {patients.num_events()} events", flush=True)
 
-    print("Filter out patient IDs that don't have any events")
+    print("Filter out patient IDs that don't have any events", flush=True)
     patient_ids = patients.select_non_empty_patients(patient_ids)
 
-    print('Generate patients from IDs')
+    print('Generate patients from IDs', flush=True)
     patients.generate_patients_from_ids(patient_ids)
     #import pdb
     #pdb.set_trace()
@@ -220,19 +232,19 @@ def generate_patient_db(demographics_path, meddra_extractions_dir,
     # pdb.set_trace()
 
     # FIXME
-    print('Attach events to visits...')
+    print('Attach events to visits...', flush=True)
     patients.attach_events_to_visits()
     #import pdb
     #pdb.set_trace()
 
-    print('Attach demographic information to patients')
+    print('Attach demographic information to patients', flush=True)
     patients.add_demographic_info(demographics, use_dask)
     #import pdb
     #pdb.set_trace()
 
-    print('Dump patients to a file')
+    print('Dump patients to a file', flush=True)
     patients.dump(output_dir, "patients", "jsonl", unique=True)
 
     #import pdb
     #pdb.set_trace()
-    print()
+    #print()

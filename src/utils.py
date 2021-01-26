@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from datetime import date, datetime
 
@@ -28,12 +29,14 @@ def get_df(path, use_dask=False, debug=False):
     return df
 
 
-def get_df_frames(df_frames_dir, use_dask=False, debug=False):
-    paths = [path for path in os.listdir(df_frames_dir)]
+def get_df_frames(df_frames_dir, pattern_re, use_dask=False, debug=False):
+    paths = [path for path in os.listdir(df_frames_dir) if re.match(pattern_re, path)]
     paths_full = [os.path.join(df_frames_dir, path) for path in paths]
+    #import pdb;pdb.set_trace()
     # Only load one frame for debug mode
     if debug:
-        paths_full = [paths_full[0]]
+        if len(paths_full) > 1:
+            paths_full = [paths_full[0]]
     print("Attempting to read df from paths: ")
     for path in paths_full:
         print(f"\t{path}")
@@ -43,8 +46,8 @@ def get_df_frames(df_frames_dir, use_dask=False, debug=False):
     return df
 
 
-def get_table(table_dir, prefix='', pattern='*', extension='.csv',
-              use_dask=False, debug=False):
+def get_table(table_dir, prefix='', pattern='*', pattern_re='.*',
+              extension='.csv', use_dask=False, debug=False):
     print("get_table()")
     if use_dask:
         print("\tUsing dask")
@@ -53,7 +56,8 @@ def get_table(table_dir, prefix='', pattern='*', extension='.csv',
         df = get_df(table_path, use_dask, debug)
     else:
         print("\tGetting df frames")
-        df = get_df_frames(table_dir, use_dask, debug)
+        pattern_re_full = f"{prefix}{pattern_re}{extension}"
+        df = get_df_frames(table_dir, pattern_re_full, use_dask, debug)
     return df
 
 

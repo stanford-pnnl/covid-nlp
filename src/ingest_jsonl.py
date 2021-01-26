@@ -132,12 +132,13 @@ if __name__ == '__main__':
         #base_path = 'covid_like_patients_entity-first_visit'
         #base_path = 'covid_like_patients_entity-first_section'
         # siyi's latest format
-        base_path = 'entity_risk_by_patients_processed_covid_admission_notes'
+        #base_path = 'entity_risk_by_patients_processed_covid_admission_notes'
+        base_path = 'entity_risk_by_patients_processed_covidlike_admission_notes_batch014'
     else:
         repo_dir = '/home/colbyham/covid-nlp'
         base_path = 'covid_like_patients_entity'
 
-    n_partitions = 1
+    n_partitions = 2
     n_patients_per_partition = 1000
     extension = 'jsonl'
     #script_name = 'drop_text'

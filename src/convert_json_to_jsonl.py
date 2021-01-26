@@ -58,11 +58,11 @@ def chunk_big_json(input_dir, output_dir, base_path, input_extension,
     c['num_patients_per_batch'] = num_patients_per_batch
     patient_lines = []
 
-    # Remove files in output dir
-    for root, dirs, files in os.walk(output_dir):
-        for f in files:
-            print(f"Removing {f}")
-            os.remove(os.path.join(root, f))
+    ## Remove files in output dir
+    #for root, dirs, files in os.walk(output_dir):
+    #    for f in files:
+    #        print(f"Removing {f}")
+    #        os.remove(os.path.join(root, f))
 
     # Create directory after deleting
     Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -108,7 +108,8 @@ if __name__ == '__main__':
         repo_dir = '/Users/hamc649/Documents/deepcare/covid-19/covid-nlp'
         #base_path = 'covid_like_patients_entity_batch000'
         # siyi's latest format
-        base_path = 'entity_risk_by_patients_processed_covid_admission_notes'
+        #base_path = 'entity_risk_by_patients_processed_covid_admission_notes'
+        base_path = 'entity_risk_by_patients_processed_covidlike_admission_notes_batch015'
     else:
         repo_dir = '/home/colbyham/covid-nlp'
         base_path = 'covid_like_patients_entity'

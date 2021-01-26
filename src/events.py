@@ -292,7 +292,7 @@ def get_diagnosis_events(patients: PatientDB, df):
 
 
 def get_medication_events(patients: PatientDB, concept_df, df, use_dask=False):
-    print("Getting medication events...")
+    print("Getting medication events...", flush=True)
     columns: Dict[str, Counter] = dict()
     column_names = df.columns.tolist()
     for column in column_names:
@@ -306,9 +306,17 @@ def get_medication_events(patients: PatientDB, concept_df, df, use_dask=False):
     else:
         df_lib = dd
 
-    new_df = df_lib.merge(
-        df, concept_df, how="left", left_on="drug_concept_id",
-        right_on="concept_id", suffixes=('', '_right'))
+    #new_df = df_lib.merge(
+    #    df, concept_df, how="left", left_on="drug_concept_id",
+    #    right_on="concept_id", suffixes=('', '_right'))
+    # Large to Small Join
+    # Ensure that the smaller concept table can fit into a single
+    # partititon of memory
+    if use_dask:
+        concept_df = concept_df.repartition(npartitions=1)
+    new_df = df.merge(concept_df, how="left", left_on="drug_concept_id",
+                      right_on="concept_id", suffixes=('', '_right'))
+    #import pdb;pdb.set_trace()
 
     drug_concept_class_ids: Set[str] = set()
     accepted_drug_concept_class_ids = set()
