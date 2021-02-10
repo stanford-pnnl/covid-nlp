@@ -13,14 +13,14 @@ def get_df(path, use_dask=False, debug=False):
     else:
         df_lib = pd
 
-    if '.parquet' in path:
-        df = df_lib.read_parquet(path, engine='pyarrow')
-    elif '.hdf' in path:
+    if ".parquet" in path:
+        df = df_lib.read_parquet(path, engine="pyarrow")
+    elif ".hdf" in path:
         df = df_lib.read_hdf(path)
-    elif '.csv' in path:
+    elif ".csv" in path:
         # FIXME, files that are gzipped need to have the correct extension
         # .gz
-        df = df_lib.read_csv(path, compression='gzip')
+        df = df_lib.read_csv(path, compression="gzip")
     else:
         print(f"Unhandled path, no matching file extension: {path}")
         sys.exit(1)
@@ -32,7 +32,7 @@ def get_df(path, use_dask=False, debug=False):
 def get_df_frames(df_frames_dir, pattern_re, use_dask=False, debug=False):
     paths = [path for path in os.listdir(df_frames_dir) if re.match(pattern_re, path)]
     paths_full = [os.path.join(df_frames_dir, path) for path in paths]
-    #import pdb;pdb.set_trace()
+    # import pdb;pdb.set_trace()
     # Only load one frame for debug mode
     if debug:
         if len(paths_full) > 1:
@@ -46,8 +46,15 @@ def get_df_frames(df_frames_dir, pattern_re, use_dask=False, debug=False):
     return df
 
 
-def get_table(table_dir, prefix='', pattern='*', pattern_re='.*',
-              extension='.csv', use_dask=False, debug=False):
+def get_table(
+    table_dir,
+    prefix="",
+    pattern="*",
+    pattern_re=".*",
+    extension=".csv",
+    use_dask=False,
+    debug=False,
+):
     print("get_table()")
     if use_dask:
         print("\tUsing dask")
