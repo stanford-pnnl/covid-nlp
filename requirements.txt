@@ -15,7 +15,7 @@ fsspec==0.8.0
 heapdict==1.0.0
 importlib-metadata==0.0.0
 ipykernel @ file:///tmp/build/80754af9/ipykernel_1596206602906/work/dist/ipykernel-5.3.4-py3-none-any.whl
-ipython==7.13.0
+ipython==7.16.3
 ipython-genutils==0.2.0
 jedi==0.13.3
 Jinja2==2.10.1
