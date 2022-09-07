@@ -108,10 +108,11 @@ if __name__ == "__main__":
     output_dir = f"{script_dir}/output"
 
     #input_dir = f"{script_dir}/input/covid_like_patients_24hr"
-    input_dir = f"{script_dir}/input/covid_patients_24hr"
+    input_dir = f"{script_dir}/input"
     
     #base_path = 'entity_risk_by_patients_processed_covidlike_admission_notes'
-    base_path = 'entity_risk_by_patients_processed_covid_admission_notes'
+    #base_path = 'entity_risk_by_patients_processed_covid_admission_notes'
+    base_path = 'entity_risk_by_patients_processed_note'
 
     #input_paths = [f"{base_path}_batch{x}.json" for x in range(16)]
     input_paths = [f'{base_path}.json']

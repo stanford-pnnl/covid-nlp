@@ -315,14 +315,14 @@ def main(
                 test_var = "remove"
 
                 # REMOVE temporarily only process 2020 records
-                if year_key != "2020":
-                    continue
+                #if year_key != "2020":
+                #    continue
 
                 d[month_key] += 1
 
                 # Remote note_ids if we are dropping PHI
                 if drop_text:
-                    #visit["note_id"] = "-9999"
+                    visit["note_id"] = "-9999"
                     #visit["timestamp"] = str(datetime.now())
                     pass
 
@@ -350,7 +350,10 @@ def main(
                         if len(risk_factor_entities) > 1:
                             test_var = "remove"
                         for entity in risk_factor_entities:
-                            month_counts[month_key][entity] += 1
+                            try:
+                                month_counts[month_key][entity] += 1
+                            except KeyError:
+                                pass
 
                         test_var = "remove"
                     # entity_extraction_results = section['entity_extraction_results']
@@ -507,7 +510,7 @@ if __name__ == "__main__":
     print(f"use_first_section: {use_first_section}")
 
     # drop text
-    drop_text = True
+    drop_text = False
     print(f"drop_text: {drop_text}")
 
     # Build output suffix based on bools
@@ -527,7 +530,7 @@ if __name__ == "__main__":
     #length_of_stay_of_patients = 'los_2-4_wks'
     #length_of_stay_of_patients = "los_gt_4_wks"
 
-    class_of_patients = "covidlike"
+    class_of_patients = "covid"
     print(f"class_of_patients: {class_of_patients}")
 
     gender_of_patients = 'FEMALE'
@@ -546,7 +549,8 @@ if __name__ == "__main__":
     print(f"races_of_patients: {races_of_patients}")
 
     if class_of_patients == "covid":
-        base_path = "entity_risk_by_patients_processed_covid_admission_notes"
+        #base_path = "entity_risk_by_patients_processed_covid_admission_notes"
+        base_path = "entity_risk_by_patients_processed_note"
     elif class_of_patients == "covidlike":
         base_path = "entity_risk_by_patients_processed_covidlike_admission_notes"
 

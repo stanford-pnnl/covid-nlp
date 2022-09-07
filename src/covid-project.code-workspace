@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"path": "../../visualization"
+		},
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"python.pythonPath": "/anaconda3/envs/covid_nlp/bin/python"
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Python: Current File",
+				"type": "python",
+				"request": "launch",
+				"program": "${file}",
+				"console": "integratedTerminal"
+			}
+		]
+	}
+}
