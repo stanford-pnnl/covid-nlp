@@ -7,7 +7,7 @@ certifi==2020.6.20
 cffi @ file:///tmp/build/80754af9/cffi_1600699165083/work
 cloudpickle==1.5.0
 cycler==0.10.0
-dask==2.23.0
+dask==2021.10.0
 decorator==4.4.0
 defusedxml==0.5.0
 entrypoints==0.3
