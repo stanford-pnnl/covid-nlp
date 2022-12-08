@@ -3,7 +3,7 @@ attrs==20.1.0
 backcall==0.1.0
 backports-datetime-fromisoformat==1.0.0
 bleach==3.3.0
-certifi==2020.6.20
+certifi==2022.12.7
 cffi @ file:///tmp/build/80754af9/cffi_1600699165083/work
 cloudpickle==1.5.0
 cycler==0.10.0
